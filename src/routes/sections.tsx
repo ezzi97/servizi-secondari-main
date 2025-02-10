@@ -15,6 +15,8 @@ export const UserPage = lazy(() => import('src/pages/user'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
 export const SignUpPage = lazy(() => import('src/pages/sign-up'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
+export const ForgotPasswordPage = lazy(() => import('src/pages/forgot-password'));
+export const NewServicePage = lazy(() => import('src/pages/new-service'));
 
 // ----------------------------------------------------------------------
 
@@ -44,6 +46,7 @@ export function Router() {
       children: [
         { path: 'dashboard', element: <HomePage />, index: true },
         { path: 'servizi', element: <UserPage /> },
+        { path: 'servizi/nuovo', element: <NewServicePage /> },
       ],
     },
     {
@@ -57,6 +60,7 @@ export function Router() {
       children: [
         { path: '/', element: <SignInPage /> },
         { path: 'sign-up', element: <SignUpPage /> },
+        { path: 'forgot-password', element: <ForgotPasswordPage /> },
       ],
     },
     {

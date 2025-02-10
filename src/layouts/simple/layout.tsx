@@ -58,6 +58,9 @@ export function SimpleLayout({ sx, children, header, content }: SimpleLayoutProp
               <Link
                 href="#"
                 component={RouterLink}
+                sx={{
+                    fontWeight: 600,
+                }}
               >
                 Hai bisogno di aiuto?
               </Link>

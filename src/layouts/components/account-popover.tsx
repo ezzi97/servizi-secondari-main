@@ -170,16 +170,13 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
         onClose={() => setOpenLogoutDialog(false)}
         aria-labelledby="logout-dialog-title"
         PaperProps={{
-          elevation: 24,
           sx: {
-            width: '100%',
-            maxWidth: 440,
-            borderRadius: 3,
-            p: { xs: 1, sm: 2 },
-            backgroundImage: (theme) => `linear-gradient(135deg, 
-              ${theme.palette.background.neutral} 0%, 
-              ${theme.palette.background.paper} 100%
-            )`,
+            '& .MuiDialog-paper': {
+              width: '100%',
+              maxWidth: 400,
+            },
+            borderRadius: 2,
+            p: 1,
           },
         }}
       >
@@ -188,83 +185,57 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
           sx={{ 
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
-            p: 2.5,
-            pb: 0,
+            gap: 1,
+            p: 2,
           }}
         >
-          <Box
-            sx={{
-              p: 1,
-              borderRadius: 2,
-              display: 'flex',
-              bgcolor: (theme) => theme.palette.error.lighter,
-            }}
-          >
-            <Iconify 
-              icon="solar:logout-3-bold-duotone" 
-              width={28}
-              sx={{ 
-                color: 'error.main',
-              }} 
-            />
-          </Box>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Iconify 
+            icon="solar:logout-3-bold-duotone" 
+            width={24} 
+            sx={{ 
+              color: 'error.main',
+            }} 
+          />
+          <Typography variant="h6">
             Conferma logout
           </Typography>
-          <IconButton 
-            onClick={() => setOpenLogoutDialog(false)}
-            sx={{ 
-              color: 'text.secondary',
-              '&:hover': { bgcolor: 'action.hover' },
-            }}
-          >
-            <Iconify icon="mingcute:close-line" width={24} />
-          </IconButton>
         </DialogTitle>
 
-        <DialogContent 
-          sx={{ 
-            p: 2.5,
-            pb: 1,
-            pt: 1,
-          }}
-        >
+        <DialogContent sx={{ p: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 2, 
+            mb: 2 
+          }}>
+            <Avatar 
+              src={_myAccount.photoURL} 
+              alt={_myAccount.displayName}
+              sx={{ 
+                width: 48, 
+                height: 48,
+                border: (theme) => `solid 2px ${theme.palette.background.neutral}`
+              }}
+            >
+              {_myAccount.displayName.charAt(0).toUpperCase()}
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle1">
+                {_myAccount.displayName}
+              </Typography>
+            </Box>
+          </Box>
 
-          <DialogContentText 
-            sx={{ 
-              color: 'text.secondary',
-              typography: 'subtitle1',
-              textAlign: 'center',
-              justifyContent: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyItems: 'center',
-              marginTop: 2,
-              marginBottom: 2,
-              fontSize: '1rem',
-            }}
-          >
+          <DialogContentText sx={{ color: 'text.secondary' }}>
             Sei sicuro di voler uscire?
           </DialogContentText>
         </DialogContent>
 
-        <DialogActions 
-          sx={{ 
-            px: 2.5, 
-            pb: 2.5, 
-            pt: 1,
-            gap: 1.5,
-          }}
-        >
+        <DialogActions sx={{ px: 2, pb: 2, pt: 1 }}>
           <Button 
             onClick={() => setOpenLogoutDialog(false)} 
             color="inherit"
             variant="outlined"
-            sx={{ 
-              flex: 1,
-              borderRadius: 1.5,
-            }}
           >
             Annulla
           </Button>
@@ -275,11 +246,9 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
             variant="contained"
             startIcon={!loggingOut && <Iconify icon="solar:logout-3-bold" />}
             sx={{
-              flex: 1,
-              borderRadius: 1.5,
-              bgcolor: 'error.main',
+              bgcolor: (theme) => theme.palette.error.main,
               '&:hover': {
-                bgcolor: 'error.dark',
+                bgcolor: (theme) => theme.palette.error.dark,
               },
             }}
           >

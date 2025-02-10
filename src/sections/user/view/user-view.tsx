@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 
-import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
@@ -9,11 +8,13 @@ import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import TableContainer from '@mui/material/TableContainer';
 import TablePagination from '@mui/material/TablePagination';
+import Stack from '@mui/material/Stack';
 
 import { _users } from 'src/_mock';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
+import { useRouter } from 'src/routes/hooks';
 
 import { TableNoData } from '../table-no-data';
 import { UserTableRow } from '../user-table-row';
@@ -27,6 +28,7 @@ import type { UserProps } from '../user-table-row';
 // ----------------------------------------------------------------------
 
 export function UserView() {
+  const router = useRouter();
   const table = useTable();
 
   const [filterName, setFilterName] = useState('');
@@ -49,23 +51,24 @@ export function UserView() {
 
   return (
     <>
-      <Box display="flex" alignItems="center" mb={5}>
-        <Box flexGrow={1} display="flex" alignItems="center" gap={1}>
-          <Typography variant="h4" gutterBottom>
-            I miei servizi
-          </Typography>
-          <Typography variant="subtitle1" sx={{ color: 'text.secondary' }} gutterBottom>
-            ({filteredCount} / {totalCount})
-          </Typography>
-        </Box>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+        <Typography variant="h4">Servizi</Typography>
+        
         <Button
           variant="contained"
-          color="inherit"
-          startIcon={<Iconify icon="mingcute:add-line" />}
+          startIcon={<Iconify icon="eva:plus-fill" />}
+          onClick={() => router.push('/servizi/nuovo')}
+          sx={{
+            bgcolor: (themed) => themed.palette.mode === 'light' ? 'grey.800' : 'grey.50',
+            color: (themed) => themed.palette.mode === 'light' ? 'common.white' : 'grey.800',
+            '&:hover': {
+              bgcolor: (themed) => themed.palette.mode === 'light' ? 'grey.700' : 'grey.200',
+            },
+          }}
         >
-          Nuovo servizio
+          Nuovo Servizio
         </Button>
-      </Box>
+      </Stack>
 
       <Card>
         <UserTableToolbar

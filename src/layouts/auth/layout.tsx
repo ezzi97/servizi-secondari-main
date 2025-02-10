@@ -65,6 +65,9 @@ export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
               <Link
                 component={RouterLink}
                 href="#"
+                sx={{
+                  fontWeight: 600,
+                }}
               >
                 Hai bisogno di aiuto?
               </Link>

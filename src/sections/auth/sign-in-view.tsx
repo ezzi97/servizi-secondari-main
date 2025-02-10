@@ -74,7 +74,7 @@ export function SignInView() {
         variant="body2" 
         color="inherit" 
         component={RouterLink}
-        href="/reset-password"
+        href="/forgot-password"
         sx={{ mb: 1.5, mt: 1 }}
       >
         Hai dimenticato la password?
