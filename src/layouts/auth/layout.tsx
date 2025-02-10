@@ -6,6 +6,9 @@ import { RouterLink } from 'src/routes/components';
 
 import { stylesMode } from 'src/theme/styles';
 
+import { Iconify } from 'src/components/iconify/iconify';
+import { IconButton } from '@mui/material';
+import { useAppTheme } from 'src/hooks/use-theme-mode';
 import { Main } from './main';
 import { HeaderSection } from '../core/header-section';
 import { LayoutSection } from '../core/layout-section';
@@ -22,6 +25,7 @@ export type AuthLayoutProps = {
 
 export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
   const layoutQuery: Breakpoint = 'md';
+  const { toggleThemeMode, mode } = useAppTheme();
 
   return (
     <LayoutSection
@@ -41,12 +45,26 @@ export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
             ...header?.sx,
           }}
           slots={{
+            leftArea: (
+                <IconButton
+                onClick={toggleThemeMode}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1,
+                  color: 'text.primary',
+                }}
+              >
+                <Iconify
+                  icon={mode === 'light' ? 'solar:moon-bold-duotone' : 'solar:sun-bold-duotone'}
+                  width={24}
+                />
+              </IconButton>
+            ),
             rightArea: (
               <Link
                 component={RouterLink}
                 href="#"
-                color="inherit"
-                sx={{ typography: 'subtitle2' }}
               >
                 Hai bisogno di aiuto?
               </Link>

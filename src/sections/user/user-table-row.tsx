@@ -6,6 +6,7 @@ import IconButton from '@mui/material/IconButton';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
+import Tooltip from '@mui/material/Tooltip';
 
 // ----------------------------------------------------------------------
 
@@ -95,15 +96,21 @@ export function UserTableRow({ row }: UserTableRowProps) {
 
         <TableCell align="right">
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-            <IconButton color="primary">
-              <Iconify icon="solar:pen-bold" />
-            </IconButton>
-            <IconButton color="error">
-              <Iconify icon="solar:archive-down-minimlistic-bold-duotone" />
-            </IconButton>
-            <IconButton color="success">
-              <Iconify icon="solar:share-bold" />
-            </IconButton>
+            <Tooltip title="Modifica">
+              <IconButton color="primary">
+                <Iconify icon="solar:pen-bold"/>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Cancella">
+              <IconButton color="error">
+                <Iconify icon="solar:trash-bin-minimalistic-bold" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Condividi">
+              <IconButton color="success">
+                <Iconify icon="solar:share-bold" />
+              </IconButton>
+            </Tooltip>
           </Box>
         </TableCell>
       </TableRow>

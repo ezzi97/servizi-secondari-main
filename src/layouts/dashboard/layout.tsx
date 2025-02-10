@@ -6,7 +6,7 @@ import Box from '@mui/material/Box';
 import { IconButton } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
-import { useThemeMode } from 'src/theme/theme-provider';
+import { useAppTheme } from 'src/hooks/use-theme-mode';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -32,7 +32,7 @@ export type DashboardLayoutProps = {
 
 export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) {
   const theme = useTheme();
-  const { toggleThemeMode, mode } = useThemeMode();
+  const { toggleThemeMode, mode } = useAppTheme();
 
   const [navOpen, setNavOpen] = useState(false);
 

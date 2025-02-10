@@ -13,6 +13,7 @@ import { DashboardLayout } from 'src/layouts/dashboard';
 export const HomePage = lazy(() => import('src/pages/home'));
 export const UserPage = lazy(() => import('src/pages/user'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
+export const SignUpPage = lazy(() => import('src/pages/sign-up'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
 
 // ----------------------------------------------------------------------
@@ -48,10 +49,15 @@ export function Router() {
     {
       element: (
         <AuthLayout>
-          <SignInPage />
+          <Suspense fallback={renderFallback}>
+            <Outlet />
+          </Suspense>
         </AuthLayout>
       ),
-      path: '/',
+      children: [
+        { path: '/', element: <SignInPage /> },
+        { path: 'sign-up', element: <SignUpPage /> },
+      ],
     },
     {
       path: '404',

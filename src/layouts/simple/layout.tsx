@@ -4,6 +4,9 @@ import Link from '@mui/material/Link';
 
 import { RouterLink } from 'src/routes/components';
 
+import { Iconify } from 'src/components/iconify/iconify';
+import { IconButton } from '@mui/material';
+import { useAppTheme } from 'src/hooks/use-theme-mode';
 import { Main, CompactContent } from './main';
 import { LayoutSection } from '../core/layout-section';
 import { HeaderSection } from '../core/header-section';
@@ -23,7 +26,7 @@ export type SimpleLayoutProps = {
 
 export function SimpleLayout({ sx, children, header, content }: SimpleLayoutProps) {
   const layoutQuery: Breakpoint = 'md';
-
+  const { toggleThemeMode, mode } = useAppTheme();
   return (
     <LayoutSection
       /** **************************************
@@ -35,12 +38,26 @@ export function SimpleLayout({ sx, children, header, content }: SimpleLayoutProp
           slotProps={{ container: { maxWidth: false } }}
           sx={header?.sx}
           slots={{
+            leftArea: (
+                <IconButton
+                onClick={toggleThemeMode}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1,
+                  color: 'text.primary',
+                }}
+              >
+                <Iconify
+                  icon={mode === 'light' ? 'solar:moon-bold-duotone' : 'solar:sun-bold-duotone'}
+                  width={24}
+                />
+              </IconButton>
+            ),
             rightArea: (
               <Link
                 href="#"
                 component={RouterLink}
-                color="inherit"
-                sx={{ typography: 'subtitle2' }}
               >
                 Hai bisogno di aiuto?
               </Link>
