@@ -1,5 +1,8 @@
+import type { TextFieldProps } from '@mui/material/TextField';
+
 import { Controller, useFormContext } from 'react-hook-form';
-import TextField, { TextFieldProps } from '@mui/material/TextField';
+
+import TextField from '@mui/material/TextField';
 
 type Props = TextFieldProps & {
   name: string;

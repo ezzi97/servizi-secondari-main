@@ -14,7 +14,7 @@ export const navData = [
   },
   {
     title: 'Servizi archiviati',
-    path: '/servizi',
+    path: '/servizi-archiviati',
     icon: icon('ic-user'),
   },
   {

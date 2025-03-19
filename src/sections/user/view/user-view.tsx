@@ -1,20 +1,23 @@
 import { useState, useCallback } from 'react';
 
+import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
-import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import SpeedDial from '@mui/material/SpeedDial';
 import TableBody from '@mui/material/TableBody';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import TableContainer from '@mui/material/TableContainer';
+import SpeedDialAction from '@mui/material/SpeedDialAction';
 import TablePagination from '@mui/material/TablePagination';
-import Stack from '@mui/material/Stack';
+
+import { useRouter } from 'src/routes/hooks';
 
 import { _users } from 'src/_mock';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
-import { useRouter } from 'src/routes/hooks';
 
 import { TableNoData } from '../table-no-data';
 import { UserTableRow } from '../user-table-row';
@@ -23,58 +26,143 @@ import { TableEmptyRows } from '../table-empty-rows';
 import { UserTableToolbar } from '../user-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
 
-import type { UserProps } from '../user-table-row';
+import type { UserProps } from '../models';
 
 // ----------------------------------------------------------------------
 
-export function UserView() {
+type UserViewProps = {
+  filterDateFrom?: Date | null;
+  filterDateTo?: Date | null;
+};
+
+export function UserView({ filterDateFrom, filterDateTo }: UserViewProps) {
   const router = useRouter();
   const table = useTable();
+  const theme = useTheme();
+  
+  const [open, setOpen] = useState(false);
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const actions = [
+    { 
+      icon: <Iconify icon="lineicons:ambulance" width={22} height={22} />, 
+      name: 'Secondari',
+      onClick: () => {
+        router.push('/servizi/secondari/nuovo');
+        handleClose();
+      }
+    },
+    { 
+      icon: <Iconify icon="solar:basketball-bold" width={22} height={22} />, 
+      name: 'Sportivi',
+      onClick: () => {
+        router.push('/servizi/sportivi/nuovo');
+        handleClose();
+      }
+    },
+  ];
 
   const [filterName, setFilterName] = useState('');
   const [filterVisit, setFilterVisit] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterVehicle, setFilterVehicle] = useState('');
+  const [filterPriority, setFilterPriority] = useState('');
+  const [filterTimeOfDay, setFilterTimeOfDay] = useState('');
 
   const dataFiltered: UserProps[] = applyFilter({
     inputData: _users,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
     filterVisit,
-    filterStatus
+    filterStatus,
+    filterVehicle,
+    filterPriority,
+    filterTimeOfDay,
+    filterDateFrom: filterDateFrom ?? null,
+    filterDateTo: filterDateTo ?? null
   });
 
   const notFound = !dataFiltered.length && !!filterName;
-  const filteredCount = dataFiltered.length;
-  const totalCount = _users.length;
-
-  const theme = useTheme();
 
   return (
     <>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
-        <Typography variant="h4">Servizi</Typography>
-        
-        <Button
-          variant="contained"
-          startIcon={<Iconify icon="eva:plus-fill" />}
-          onClick={() => router.push('/servizi/nuovo')}
-          sx={{
-            bgcolor: (themed) => themed.palette.mode === 'light' ? 'grey.800' : 'grey.50',
-            color: (themed) => themed.palette.mode === 'light' ? 'common.white' : 'grey.800',
-            '&:hover': {
-              bgcolor: (themed) => themed.palette.mode === 'light' ? 'grey.700' : 'grey.200',
-            },
-          }}
-        >
-          Nuovo Servizio
-        </Button>
+      <Stack direction="row" alignItems="center" sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ flexGrow: 1 }}>
+          Servizi
+        </Typography>
       </Stack>
 
-      <Card>
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: { xs: 24, sm: 24 },
+          right: { xs: 24, sm: 24 },
+          zIndex: 30,
+        }}
+      >
+        <SpeedDial
+          ariaLabel="Nuovo Servizio"
+          icon={<Iconify icon="eva:plus-fill" width={24} />}
+          onClose={handleClose}
+          onOpen={handleOpen}
+          open={open}
+          FabProps={{
+            sx: {
+              bgcolor: (theme) => theme.palette.mode === 'light' ? 'grey.800' : 'grey.50',
+              color: (theme) => theme.palette.mode === 'light' ? 'common.white' : 'grey.800',
+              '&:hover': {
+                bgcolor: (theme) => theme.palette.mode === 'light' ? 'grey.700' : 'grey.200',
+              },
+              borderRadius: 5,
+              width: 56,
+              height: 56,
+            }
+          }}
+          sx={{
+            '& .MuiSpeedDial-actions': {
+              visibility: open ? 'visible' : 'hidden',
+              height: open ? 'auto' : 0,
+              overflow: 'hidden',
+              transition: 'height 0.3s, visibility 0.3s',
+            }
+          }}
+          direction="up"
+          hidden={false}
+        >
+          {actions.map((action) => (
+            <SpeedDialAction
+              key={action.name}
+              tooltipTitle={action.name}
+              icon={action.icon}
+              tooltipPlacement="left"
+              onClick={action.onClick}
+              FabProps={{
+                sx: {
+                  bgcolor: (theme) => theme.palette.mode === 'light' ? 'grey.800' : 'grey.50',
+                  color: (theme) => theme.palette.mode === 'light' ? 'common.white' : 'grey.800',
+                  '&:hover': {
+                    bgcolor: (theme) => theme.palette.mode === 'light' ? 'grey.700' : 'grey.200',
+                  },
+                  width: 56,
+                  height: 56,
+                  borderRadius: 5,
+                }
+              }}
+            />
+          ))}
+        </SpeedDial>
+      </Box>
+
+      <Card sx={{ position: 'relative', zIndex: 20 }}>
         <UserTableToolbar
           filterName={filterName}
           filterVisit={filterVisit}
           filterStatus={filterStatus}
+          filterVehicle={filterVehicle}
+          filterPriority={filterPriority}
+          filterTimeOfDay={filterTimeOfDay}
           onFilterName={(event) => {
             setFilterName(event.target.value);
             table.onResetPage();
@@ -85,6 +173,18 @@ export function UserView() {
           }}
           onFilterStatus={(value) => {
             setFilterStatus(value);
+            table.onResetPage();
+          }}
+          onFilterVehicle={(value) => {
+            setFilterVehicle(value);
+            table.onResetPage();
+          }}
+          onFilterPriority={(value) => {
+            setFilterPriority(value);
+            table.onResetPage();
+          }}
+          onFilterTimeOfDay={(value) => {
+            setFilterTimeOfDay(value);
             table.onResetPage();
           }}
         />
@@ -149,15 +249,24 @@ export function UserView() {
           </TableContainer>
         </Scrollbar>
 
-        <TablePagination
-          component="div"
-          page={table.page}
-          count={_users.length}
-          rowsPerPage={table.rowsPerPage}
-          onPageChange={table.onChangePage}
-          rowsPerPageOptions={[5, 10, 25]}
-          onRowsPerPageChange={table.onChangeRowsPerPage}
-        />
+        <Box 
+          sx={{ 
+            position: 'relative',
+            zIndex: 25,
+            pointerEvents: 'auto',
+          }}
+        >
+          <TablePagination
+            component="div"
+            labelRowsPerPage="Per pagina"
+            page={table.page}
+            count={_users.length}
+            rowsPerPage={table.rowsPerPage}
+            onPageChange={table.onChangePage}
+            rowsPerPageOptions={[5, 10, 25]}
+            onRowsPerPageChange={table.onChangeRowsPerPage}
+          />
+        </Box>
       </Card>
     </>
   );

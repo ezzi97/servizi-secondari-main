@@ -7,6 +7,8 @@ import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgr
 import { varAlpha } from 'src/theme/styles';
 import { AuthLayout } from 'src/layouts/auth';
 import { DashboardLayout } from 'src/layouts/dashboard';
+import { AuthGuard } from 'src/components/auth-guard';
+import { EditSecondaryServiceView, EditSportServiceView } from 'src/sections/service';
 
 // ----------------------------------------------------------------------
 
@@ -17,6 +19,9 @@ export const SignUpPage = lazy(() => import('src/pages/sign-up'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
 export const ForgotPasswordPage = lazy(() => import('src/pages/forgot-password'));
 export const NewServicePage = lazy(() => import('src/pages/new-service'));
+export const SecondaryServicePage = lazy(() => import('src/pages/servizi/secondari/nuovo'));
+export const SportServicePage = lazy(() => import('src/pages/servizi/sportivi/nuovo'));
+export const ServicesPage = lazy(() => import('src/pages/user'));
 
 // ----------------------------------------------------------------------
 
@@ -45,9 +50,24 @@ export function Router() {
       ),
       children: [
         { path: 'dashboard', element: <HomePage />, index: true },
-        { path: 'servizi', element: <UserPage /> },
-        { path: 'servizi/nuovo', element: <NewServicePage /> },
+        { path: 'servizi', children: [
+          { element: <NewServicePage />, index: true },
+          { element: <SecondaryServicePage />, path: 'secondari/nuovo' },
+          { element: <SportServicePage />, path: 'sportivi/nuovo' },
+        ] },
       ],
+    },
+    {
+        element: (
+            <DashboardLayout>
+                <Suspense fallback={renderFallback}>
+                    <Outlet />
+                </Suspense>
+            </DashboardLayout>
+        ),
+        children: [
+            { path: 'servizi-archiviati', element: <ServicesPage />, index: true },
+        ],
     },
     {
       element: (
@@ -70,6 +90,30 @@ export function Router() {
     {
       path: '*',
       element: <Navigate to="/404" replace />,
+    },
+    {
+      path: 'servizi/secondari/modifica/:id',
+      element: (
+        <AuthGuard>
+          <DashboardLayout>
+            <Suspense fallback={renderFallback}>
+              <EditSecondaryServiceView />
+            </Suspense>
+          </DashboardLayout>
+        </AuthGuard>
+      ),
+    },
+    {
+      path: 'servizi/sportivi/modifica/:id',
+      element: (
+        <AuthGuard>
+          <DashboardLayout>
+            <Suspense fallback={renderFallback}>
+              <EditSportServiceView />
+            </Suspense>
+          </DashboardLayout>
+        </AuthGuard>
+      ),
     },
   ]);
 }

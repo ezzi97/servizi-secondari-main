@@ -1,14 +1,16 @@
 import type { Theme, SxProps, Breakpoint } from '@mui/material/styles';
 
 import Link from '@mui/material/Link';
+import { IconButton } from '@mui/material';
 
 import { RouterLink } from 'src/routes/components';
+
+import { useAppTheme } from 'src/hooks/use-theme-mode';
 
 import { stylesMode } from 'src/theme/styles';
 
 import { Iconify } from 'src/components/iconify/iconify';
-import { IconButton } from '@mui/material';
-import { useAppTheme } from 'src/hooks/use-theme-mode';
+
 import { Main } from './main';
 import { HeaderSection } from '../core/header-section';
 import { LayoutSection } from '../core/layout-section';

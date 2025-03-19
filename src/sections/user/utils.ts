@@ -1,5 +1,6 @@
-
 // ----------------------------------------------------------------------
+
+import type { UserProps } from "./models";
 
 export const visuallyHidden = {
   border: 0,
@@ -48,14 +49,24 @@ export function applyFilter({
   inputData,
   comparator,
   filterName,
-  filterVisit,
   filterStatus,
+  filterVisit,
+  filterVehicle,
+  filterPriority,
+  filterTimeOfDay,
+  filterDateFrom,
+  filterDateTo,
 }: {
-  inputData: any[];
+  inputData: UserProps[];
   comparator: (a: any, b: any) => number;
   filterName: string;
-  filterVisit: string;
   filterStatus: string;
+  filterVisit: string;
+  filterVehicle: string;
+  filterPriority: string;
+  filterTimeOfDay: string;
+  filterDateFrom: Date | null;
+  filterDateTo: Date | null;
 }) {
   const stabilizedThis = inputData.map((el, index) => [el, index] as const);
 
@@ -73,12 +84,49 @@ export function applyFilter({
     );
   }
 
+  if (filterStatus) {
+    inputData = inputData.filter((user) => user.status === filterStatus);
+  }
+
   if (filterVisit) {
     inputData = inputData.filter((user) => user.visit === filterVisit);
   }
 
-  if (filterStatus) {
-    inputData = inputData.filter((user) => user.status === filterStatus);
+  if (filterVehicle) {
+    inputData = inputData.filter((user) => user.vehicle === filterVehicle);
+  }
+
+  if (filterPriority) {
+    inputData = inputData.filter((user) => user.priority === filterPriority);
+  }
+
+  if (filterTimeOfDay) {
+    // Assuming time is in format "HH:MM"
+    inputData = inputData.filter((user) => {
+      const hour = parseInt(user.time?.split(':')[0] || '0', 10);
+      if (filterTimeOfDay === 'Mattina') return hour >= 6 && hour < 12;
+      if (filterTimeOfDay === 'Pomeriggio') return hour >= 12 && hour < 18;
+      if (filterTimeOfDay === 'Sera') return hour >= 18 || hour < 6;
+      return true;
+    });
+  }
+
+  if (filterDateFrom) {
+    const dateFrom = new Date(filterDateFrom);
+    dateFrom.setHours(0, 0, 0, 0);
+    inputData = inputData.filter((user) => {
+      const userDate = new Date(user.date || '');
+      return userDate >= dateFrom;
+    });
+  }
+
+  if (filterDateTo) {
+    const dateTo = new Date(filterDateTo);
+    dateTo.setHours(23, 59, 59, 999);
+    inputData = inputData.filter((user) => {
+      const userDate = new Date(user.date || '');
+      return userDate <= dateTo;
+    });
   }
 
   return inputData;

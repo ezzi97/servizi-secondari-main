@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import * as Yup from 'yup';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 
@@ -13,9 +13,11 @@ import LoadingButton from '@mui/lab/LoadingButton';
 import InputAdornment from '@mui/material/InputAdornment';
 
 import { useRouter } from 'src/routes/hooks';
-import { useAppTheme } from 'src/hooks/use-theme-mode';
-import { Iconify } from 'src/components/iconify';
 import { RouterLink } from 'src/routes/components';
+
+import { useAppTheme } from 'src/hooks/use-theme-mode';
+
+import { Iconify } from 'src/components/iconify';
 import { FormProvider, RHFTextField } from 'src/components/hook-form';
 
 // ----------------------------------------------------------------------

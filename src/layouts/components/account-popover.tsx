@@ -5,24 +5,24 @@ import { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Avatar from '@mui/material/Avatar';
+import Dialog from '@mui/material/Dialog';
 import Popover from '@mui/material/Popover';
 import Divider from '@mui/material/Divider';
 import MenuList from '@mui/material/MenuList';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import Dialog from '@mui/material/Dialog';
+import LoadingButton from '@mui/lab/LoadingButton';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import LoadingButton from '@mui/lab/LoadingButton';
-import MenuItem, { menuItemClasses } from '@mui/material/MenuItem';
 import DialogContentText from '@mui/material/DialogContentText';
-import { useTheme } from '@mui/material/styles';
-import { Iconify } from 'src/components/iconify';
+import MenuItem, { menuItemClasses } from '@mui/material/MenuItem';
 
 import { useRouter, usePathname } from 'src/routes/hooks';
 
 import { _myAccount } from 'src/_mock';
+
+import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 

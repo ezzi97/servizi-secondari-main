@@ -50,7 +50,7 @@ export function ThemeProvider({ children }: Props) {
   }
 
   return (
-    <CssVarsProvider theme={theme} defaultMode="system">
+    <CssVarsProvider theme={theme} defaultMode="light">
       <CssBaseline />
       <ThemeModeProvider>
         {children}

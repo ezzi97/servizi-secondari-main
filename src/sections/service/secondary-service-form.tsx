@@ -1,34 +1,118 @@
-import { Stack, Card, Typography, Box, MenuItem, RadioGroup, FormControlLabel, Radio, Checkbox, Button, useTheme, useMediaQuery, Alert, Divider, Grid, Stepper, Step, StepLabel } from '@mui/material';
-import { LoadingButton } from '@mui/lab';
 import * as Yup from 'yup';
-import { RHFTextField } from 'src/components/hook-form';
-import { Iconify } from 'src/components/iconify';
+import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { Theme, alpha } from '@mui/material/styles';
+
+import { LoadingButton } from '@mui/lab';
+import { Box, Card, Grid, Stack, Radio, Alert, Button, Divider, MenuItem, Checkbox, useTheme, Typography, RadioGroup, useMediaQuery, FormControlLabel } from '@mui/material';
+
 import { useRouter } from 'src/routes/hooks';
 
-// Constants (move these to a separate constants file if you prefer)
-const TRANSPORT_TYPES = ['Ospedale', 'Casa', 'Centro medico', 'Clinica', 'Altro'];
-const VEHICLES = ['Ambulanza', 'Auto medica', 'Pulmino', 'Auto'];
-const POSITIONS = ['Seduto', 'Barella', 'Carrozzina'];
-const EQUIPMENT = ['Ossigeno', 'Aspiratore', 'Monitor', 'Defibrillatore'];
-const DIFFICULTIES = ['Scale', 'Peso', 'Spazi stretti', 'Ascensore non funzionante'];
+import { Iconify } from 'src/components/iconify';
+import { RHFTextField } from 'src/components/hook-form';
+
+import { formatDate, addMinutesToTime } from './utils';
+import { ServiceStepper, CustomStepHeader } from './components';
+import { ICONS, VEHICLES, POSITIONS, EQUIPMENT, DIFFICULTIES, TRANSPORT_TYPES } from './constants';
+
+type FormField = keyof typeof secondaryServiceDefaultValues;
 
 // Constants for Secondary Service
 const SECONDARY_STEPS = [
-  'Paziente',
-  'Servizio',
-  'Trasporto',
-  'Dettagli trasporto',
-  'Note e altri dettagli',
-  'Riepilogo'
+  {
+    label: 'Paziente',
+    fields: ['serviceDate', 'patientName'] as FormField[],
+  },
+  {
+    label: 'Servizio',
+    fields: ['serviceType', 'arrivalTime', 'departureTime'] as FormField[],
+  },
+  {
+    label: 'Trasporto',
+    fields: ['pickupAddress', 'pickupType', 'pickupTime', 'dropoffAddress', 'dropoffType', 'dropoffTime'] as FormField[],
+  },
+  {
+    label: 'Dettagli trasporto',
+    fields: ['vehicle'] as FormField[],
+  },
+  {
+    label: 'Note e altri dettagli',
+    fields: ['kilometers', 'price'] as FormField[],
+  },
+  {
+    label: 'Riepilogo',
+    fields: [] as FormField[],
+  },
+] as const;
+
+const SERVICE_TYPES = [
+  {
+    group: 'Dialisi',
+    options: [
+      { value: 'andata_dialisi', label: 'Andata dialisi' },
+      { value: 'ritorno_dialisi', label: 'Ritorno dialisi' },
+    ],
+  },
+  {
+    group: 'Visita',
+    options: [
+      { value: 'visita_medica', label: 'Visita medica' },
+      { value: 'prericovero', label: 'Prericovero' },
+      { value: 'trasfusione', label: 'Trasfusione' },
+      { value: 'visita_controllo', label: 'Visita di controllo' },
+      { value: 'medicazione', label: 'Medicazione' },
+    ],
+  },
+  {
+    group: 'Esami diagnostici',
+    options: [
+      { value: 'ecografia', label: 'Ecografia' },
+      { value: 'tac', label: 'TAC' },
+      { value: 'rx', label: 'RX' },
+      { value: 'risonanza', label: 'Risonanza magnetica' },
+      { value: 'mammografia', label: 'Mammografia' },
+      { value: 'ecodoppler', label: 'Ecodoppler' },
+    ],
+  },
+  {
+    group: 'Trasporto',
+    options: [
+      { value: 'dimissione', label: 'Dimissione' },
+      { value: 'trasferimento', label: 'Trasferimento' },
+      { value: 'ricovero', label: 'Ricovero' },
+      { value: 'trasporto_programmato', label: 'Trasporto programmato' },
+    ],
+  },
+  {
+    group: 'Altro',
+    options: [
+      { value: 'tampone', label: 'Tampone' },
+      { value: 'vaccino', label: 'Vaccino' },
+      { value: 'day_hospital', label: 'Day Hospital' },
+      { value: 'fisioterapia', label: 'Fisioterapia' },
+      { value: 'radioterapia', label: 'Radioterapia' },
+      { value: 'chemioterapia', label: 'Chemioterapia' },
+    ],
+  },
+  {
+    group: 'Sconosciuto',
+    options: [
+      { value: 'sconosciuto', label: 'Sconosciuto' },
+    ],
+  },
 ];
 
 const SecondaryServiceSchema = Yup.object().shape({
   // Patient section
-  serviceDate: Yup.string().required('Data servizio è obbligatoria'),
+  serviceDate: Yup.string()
+    .required('Data servizio è obbligatoria')
+    .test('futureDate', 'La data non può essere nel passato', (value) => {
+      if (!value) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return new Date(value) >= today;
+    }),
   patientName: Yup.string().required('Nome e cognome sono obbligatori'),
-  phoneNumber: Yup.string().required('Recapito telefonico è obbligatorio'),
+  phoneNumber: Yup.string(),
   
   // Service section
   serviceType: Yup.string().required('Tipo di servizio è obbligatorio'),
@@ -52,7 +136,7 @@ const SecondaryServiceSchema = Yup.object().shape({
   difficulties: Yup.array(),
   
   // Additional info
-  notes: Yup.string(),
+  additional_notes: Yup.string(),
   kilometers: Yup.number().min(0, 'I chilometri non possono essere negativi'),
   price: Yup.number().min(0, 'Il prezzo non può essere negativo'),
 });
@@ -74,298 +158,422 @@ export const secondaryServiceDefaultValues = {
   equipment: [],
   position: '',
   difficulties: [],
-  notes: '',
+  additional_notes: '',
   kilometers: 0,
   price: 0,
 };
 
-export { SecondaryServiceSchema, SECONDARY_STEPS };
+export { SECONDARY_STEPS, SecondaryServiceSchema };
 
 interface SecondaryServiceFormProps {
-  activeStep: number;
-  onNext: () => void;
-  onBack: () => void;
-  isLastStep: boolean;
   isSubmitting: boolean;
-  errors: Record<string, any>;
-  currentStepValid: boolean;
+  isEditMode?: boolean;
 }
 
-function StepperContent({ activeStep }: { activeStep: number }) {
-  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery((theme: Theme) => theme.breakpoints.between('sm', 'md'));
-
-  return (
-    <Stack spacing={2}>
-      {isMobile ? (
-        // Mobile view: Two rows with 3 steps each
-        <>
-          <Stepper 
-            activeStep={activeStep} 
-            alternativeLabel
-            sx={{
-              '& .MuiStepLabel-label': {
-                typography: 'caption',
-              },
-            }}
-          >
-            {SECONDARY_STEPS.slice(0, 3).map((label, index) => (
-              <Step key={label}>
-                <StepLabel>{`${index + 1}. ${label}`}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-          <Stepper 
-            activeStep={Math.max(activeStep - 3, -1)} 
-            alternativeLabel
-            sx={{
-              '& .MuiStepLabel-label': {
-                typography: 'caption',
-              },
-            }}
-          >
-            {SECONDARY_STEPS.slice(3).map((label, index) => (
-              <Step key={label}>
-                <StepLabel>{`${index + 4}. ${label}`}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </>
-      ) : (
-        // Tablet/Desktop view: Single row
-        <Stepper 
-          activeStep={activeStep} 
-          alternativeLabel
-          sx={{
-            '& .MuiStepLabel-label': {
-              typography: isTablet ? 'caption' : 'body2',
-            },
-          }}
-        >
-          {SECONDARY_STEPS.map((label, index) => (
-            <Step key={label}>
-              <StepLabel>{`${index + 1}. ${label}`}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-      )}
-    </Stack>
-  );
-}
-
-export default function SecondaryServiceForm({ 
-  activeStep, 
-  onNext, 
-  onBack, 
-  isLastStep,
-  isSubmitting,
-  errors,
-  currentStepValid,
-}: SecondaryServiceFormProps) {
+export default function SecondaryServiceForm({ isSubmitting, isEditMode = false }: SecondaryServiceFormProps) {
   const methods = useFormContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
+  
+  // Add stepper state and handlers
+  const [activeStep, setActiveStep] = useState(0);
+  
+  const isLastStep = activeStep === SECONDARY_STEPS.length - 1;
+
+  const handleNext = async () => {
+    const currentStepFields = SECONDARY_STEPS[activeStep].fields;
+    const isValid = await methods.trigger(currentStepFields);
+    const areFieldsFilled = currentStepFields.every(field => {
+      const value = methods.watch(field);
+      return value !== undefined && value !== '';
+    });
+
+    if (isValid && areFieldsFilled) {
+      setActiveStep((prev) => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    setActiveStep((prev) => prev - 1);
+  };
+
+  const isStepValid = (step: number) => {
+    const currentStepFields = SECONDARY_STEPS[step].fields;
+    return !currentStepFields.some(field => methods.formState.errors[field]);
+  };
+
+  const areFieldsFilled = (step: number) => {
+    const currentStepFields = SECONDARY_STEPS[step].fields;
+    return currentStepFields.every(field => {
+      const value = methods.watch(field);
+      return value !== undefined && value !== '';
+    });
+  };
 
   const renderStepContent = (step: number) => {
     switch (step) {
       case 0:
         return (
-          <Card sx={{ p: { xs: 3, md: 4 } }}>
-            <Stack spacing={4}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 1
-                  }}
-                >
-                  <Iconify icon="solar:user-outline" width={24} />
-                </Box>
-                <Box>
-                  <Typography variant="h6">Paziente</Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                    Inserisci i dati del paziente che necessita del servizio
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Stack spacing={3} sx={{ pt: 1 }}>
-                <RHFTextField
-                  name="serviceDate"
-                  label="Data servizio"
-                  type="date"
-                  InputLabelProps={{ shrink: true }}
-                  helperText="Seleziona la data in cui verrà effettuato il servizio"
-                  sx={{ '& .MuiFormHelperText-root': { mx: 0 } }}
-                />
-                <RHFTextField 
-                  name="patientName" 
-                  label="Cognome e Nome"
-                  placeholder="es. Mario Rossi" 
-                />
-                <RHFTextField 
-                  name="phoneNumber" 
-                  label="Recapito telefonico"
-                  placeholder="es. 333 1234567" 
-                />
-              </Stack>
+          <Stack spacing={4}>
+            <CustomStepHeader
+              title="Dati Paziente"
+              icon="solar:user-id-bold"
+              description="Inserisci i dati del paziente da trasportare"
+            />
+            <Stack spacing={3} sx={{ pt: 1 }}>
+              <RHFTextField
+                name="serviceDate"
+                label="Data servizio"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                helperText="Seleziona la data in cui verrà effettuato il servizio"
+                sx={{ '& .MuiFormHelperText-root': { mx: 0 } }}
+                inputProps={{
+                  min: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+                }}
+                InputProps={{
+                  startAdornment: <Iconify icon={ICONS.service.date} sx={{ color: 'text.disabled', mr: 1 }} />,
+                }}
+                value={methods.watch('serviceDate')}
+                onChange={(e) => {
+                  methods.setValue('serviceDate', e.target.value);
+                }}
+              />
+              <RHFTextField 
+                name="patientName" 
+                label="Cognome e Nome"
+                placeholder="es. Mario Rossi"
+                InputProps={{
+                  startAdornment: <Iconify icon={ICONS.patient.name} sx={{ color: 'text.disabled', mr: 1 }} />,
+                }}
+                value={methods.watch('patientName')}
+                onChange={(e) => {
+                  methods.setValue('patientName', e.target.value);
+                }}
+              />
+              <RHFTextField 
+                name="phoneNumber" 
+                type="tel"
+                label="Recapito telefonico"
+                placeholder="es. 333 1234567"
+                InputProps={{
+                  startAdornment: <Iconify icon={ICONS.patient.phone} sx={{ color: 'text.disabled', mr: 1 }} />,
+                }}
+                value={methods.watch('phoneNumber')}
+                onChange={(e) => {
+                  methods.setValue('phoneNumber', e.target.value);
+                }}
+              />
             </Stack>
-          </Card>
+          </Stack>
         );
 
       case 1:
         return (
-          <Card sx={{ p: { xs: 3, md: 4 } }}>
             <Stack spacing={4}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 1
-                  }}
-                >
-                  <Iconify icon="solar:calendar-outline" width={24} />
-                </Box>
-                <Box>
-                  <Typography variant="h6">Servizio</Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                    Dettagli del servizio richiesto
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Stack spacing={3} sx={{ pt: 1 }}>
-                <RHFTextField 
-                  name="serviceType" 
-                  label="Tipo di servizio"
-                  placeholder="es. Trasporto programmato" 
-                />
-                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-                  <RHFTextField
-                    name="arrivalTime"
-                    label="In sede alle ore"
-                    type="time"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <RHFTextField
-                    name="departureTime"
-                    label="Partenza sede alle ore"
-                    type="time"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Box>
-              </Stack>
+              <CustomStepHeader
+                title="Tipo Servizio"
+                icon="solar:hand-heart-bold-duotone"
+                description="Seleziona il tipo di servizio e gli orari"
+              />
+            <Stack spacing={3} sx={{ pt: 1 }}>
+              <RHFTextField 
+                name="serviceType" 
+                label="Tipo di servizio"
+                select
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: { sx: { maxHeight: 220 } },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: <Iconify icon={ICONS.service.type} sx={{ color: 'text.disabled', mr: 1 }} />,
+                }}
+                value={methods.watch('serviceType')}
+                onChange={(e) => {
+                  methods.setValue('serviceType', e.target.value);
+                }}
+              >
+                {SERVICE_TYPES.map((group) => [
+                  <MenuItem 
+                    key={group.group} 
+                    disabled 
+                    sx={{ 
+                      opacity: 1,
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral',
+                      typography: 'subtitle2',
+                      fontWeight: 'bold',
+                      py: 1,
+                      px: 2,
+                    }}
+                  >
+                    {group.group}
+                  </MenuItem>,
+                  ...group.options.map((option) => (
+                    <MenuItem 
+                      key={option.value} 
+                      value={option.value}
+                      sx={{ 
+                        pl: 3,
+                        py: 0.75,
+                        typography: 'body2',
+                      }}
+                    >
+                      {option.label}
+                    </MenuItem>
+                  )),
+                ])}
+              </RHFTextField>
+              <Box>
+                <Typography variant="subtitle1" sx={{ mb: 2, color: 'text.secondary' }}>
+                  Orari sede
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <RHFTextField
+                      name="arrivalTime"
+                      label="In sede alle ore"
+                      type="time"
+                      InputLabelProps={{ shrink: true }}
+                      InputProps={{
+                        startAdornment: <Iconify icon={ICONS.service.time} sx={{ color: 'text.disabled', mr: 1 }} />,
+                      }}
+                      value={methods.watch('arrivalTime')}
+                      onChange={(e) => {
+                        methods.setValue('arrivalTime', e.target.value);
+                        methods.setValue('departureTime', addMinutesToTime(e.target.value, 10));
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <RHFTextField
+                      name="departureTime"
+                      label="Partenza sede alle ore"
+                      type="time"
+                      InputLabelProps={{ shrink: true }}
+                      InputProps={{
+                        startAdornment: <Iconify icon={ICONS.service.time} sx={{ color: 'text.disabled', mr: 1 }} />,
+                      }}
+                      value={methods.watch('departureTime')}
+                      onChange={(e) => {
+                        methods.setValue('departureTime', e.target.value);
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
             </Stack>
-          </Card>
+          </Stack>
         );
 
       case 2:
         return (
-          <Card sx={{ p: { xs: 3, md: 4 } }}>
             <Stack spacing={4}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 1
+              <CustomStepHeader
+                title="Dettagli Trasporto"
+                icon="solar:map-point-bold"
+                description="Specifica i luoghi di partenza e arrivo"
+              />
+            <Stack divider={<Divider flexItem sx={{ my: 2 }} />}>
+              {/* Pickup Section */}
+              <Stack spacing={3}>
+                <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+                  Paziente trasportato da
+                </Typography>
+                <RHFTextField 
+                  name="pickupAddress" 
+                  label="Indirizzo di partenza"
+                  placeholder="es. Via Roma 1, Milano"
+                  multiline 
+                  rows={2}
+                  InputProps={{
+                    startAdornment: <Iconify icon={ICONS.transport.location} sx={{ color: 'text.disabled', mr: 1 }} />,
                   }}
-                >
-                  <Iconify icon="lineicons:ambulance" width={24} />
-                </Box>
-                <Box>
-                  <Typography variant="h6">Trasporto</Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                    Informazioni sul trasporto del paziente
-                  </Typography>
+                  onChange={(e) => {
+                    methods.setValue('pickupAddress', e.target.value);
+                  }}
+                  value={methods.watch('pickupAddress')}
+                />
+                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+                  <RHFTextField 
+                    name="pickupType" 
+                    label="Tipo di struttura"
+                    select
+                    SelectProps={{
+                      MenuProps: {
+                        PaperProps: { sx: { maxHeight: 220 } },
+                      },
+                    }}
+                    InputProps={{
+                      startAdornment: <Iconify icon={ICONS.transport.type} sx={{ color: 'text.disabled', mr: 1 }} />,
+                    }}
+                    onChange={(e) => {
+                      methods.setValue('pickupType', e.target.value);
+                    }}
+                  >
+                    {TRANSPORT_TYPES.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </RHFTextField>
+                  <RHFTextField
+                    name="pickupTime"
+                    label="Orario di partenza"
+                    type="time"
+                    InputLabelProps={{ shrink: true }}
+                    InputProps={{
+                      startAdornment: <Iconify icon={ICONS.transport.time} sx={{ color: 'text.disabled', mr: 1 }} />,
+                    }}
+                    value={methods.watch('pickupTime')}
+                    onChange={(e) => {
+                      methods.setValue('pickupTime', e.target.value);
+                    }}
+                  />
                 </Box>
               </Stack>
 
-              <Stack divider={<Divider flexItem sx={{ my: 2 }} />}>
-                {/* Pickup Section */}
-                <Stack spacing={3}>
-                  <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
-                    Paziente trasportato da
-                  </Typography>
-                  <RHFTextField name="pickupAddress" label="Indirizzo" multiline rows={2} />
-                  <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-                    <RHFTextField name="pickupType" label="Tipo" select>
-                      {TRANSPORT_TYPES.map((option) => (
-                        <MenuItem key={option} value={option}>
-                          {option}
-                        </MenuItem>
-                      ))}
-                    </RHFTextField>
-                    <RHFTextField
-                      name="pickupTime"
-                      label="Alle ore"
-                      type="time"
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Box>
-                </Stack>
-
-                {/* Dropoff Section */}
-                <Stack spacing={3}>
-                  <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
-                    Paziente trasportato a
-                  </Typography>
-                  <RHFTextField name="dropoffAddress" label="Indirizzo" multiline rows={2} />
-                  <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-                    <RHFTextField name="dropoffType" label="Tipo">
-                      {TRANSPORT_TYPES.map((option) => (
-                        <MenuItem key={option} value={option}>
-                          {option}
-                        </MenuItem>
-                      ))}
-                    </RHFTextField>
-                    <RHFTextField
-                      name="dropoffTime"
-                      label="Alle ore"
-                      type="time"
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Box>
-                </Stack>
+              {/* Dropoff Section */}
+              <Stack spacing={3}>
+                <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+                  Paziente trasportato a
+                </Typography>
+                <RHFTextField 
+                  name="dropoffAddress" 
+                  label="Indirizzo di destinazione"
+                  placeholder="es. Via Milano 1, Milano"
+                  multiline 
+                  rows={2}
+                  InputProps={{
+                    startAdornment: <Iconify icon={ICONS.transport.location} sx={{ color: 'text.disabled', mr: 1 }} />,
+                  }}
+                  value={methods.watch('dropoffAddress')}
+                  onChange={(e) => {
+                    methods.setValue('dropoffAddress', e.target.value);
+                  }}
+                />
+                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+                  <RHFTextField 
+                    name="dropoffType" 
+                    label="Tipo di struttura"
+                    select
+                    SelectProps={{
+                      MenuProps: {
+                        PaperProps: { sx: { maxHeight: 220 } },
+                      },
+                    }}
+                    InputProps={{
+                      startAdornment: <Iconify icon={ICONS.transport.type} sx={{ color: 'text.disabled', mr: 1 }} />,
+                    }}
+                    onChange={(e) => {
+                      methods.setValue('dropoffType', e.target.value);
+                    }}
+                  >
+                    {TRANSPORT_TYPES.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </RHFTextField>
+                  <RHFTextField
+                    name="dropoffTime"
+                    label="Orario di arrivo"
+                    type="time"
+                    InputLabelProps={{ shrink: true }}
+                    InputProps={{
+                      startAdornment: <Iconify icon={ICONS.transport.time} sx={{ color: 'text.disabled', mr: 1 }} />,
+                    }}
+                    value={methods.watch('dropoffTime')}
+                    onChange={(e) => {
+                      methods.setValue('dropoffTime', e.target.value);
+                    }}
+                  />
+                </Box>
               </Stack>
             </Stack>
-          </Card>
+          </Stack>
         );
 
       case 3:
         return (
-          <Card sx={{ p: { xs: 3, md: 4 } }}>
             <Stack spacing={4}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
+              <CustomStepHeader
+                title="Modalità Trasporto"
+                icon="lineicons:ambulance"
+                description="Seleziona il mezzo e le modalità di trasporto"
+              />
+            <Stack spacing={4}>
+              <RHFTextField 
+                name="vehicle" 
+                label="Mezzo utilizzato"
+                select
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: { sx: { maxHeight: 220 } },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: <Iconify icon={ICONS.details.vehicle} sx={{ color: 'text.disabled', mr: 1 }} />,
+                }}
+                value={methods.watch('vehicle')}
+                onChange={(e) => {
+                  methods.setValue('vehicle', e.target.value);
+                }}
+              >
+                {VEHICLES.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </RHFTextField>
+
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                  Presidi
+                </Typography>
+                <Stack 
+                  spacing={1} 
+                  direction={isMobile ? 'column' : 'row'}
                   sx={{
-                    p: 1.5,
-                    borderRadius: 1
+                    ...(isMobile && {
+                      '& .MuiFormControlLabel-root': {
+                        mx: 0,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        p: 0.5,
+                        width: '100%',
+                      },
+                    }),
                   }}
                 >
-                  <Iconify icon="solar:info-square-outline" width={24} />
-                </Box>
-                <Box>
-                  <Typography variant="h6">Dettagli Trasporto</Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                    Specifiche del trasporto e presidi utilizzati
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Stack spacing={4}>
-                <RHFTextField name="vehicle" label="Mezzo utilizzato" select>
-                  {VEHICLES.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
+                  {EQUIPMENT.map((item) => (
+                    <FormControlLabel 
+                      key={item} 
+                      value={item}
+                      control={<Checkbox 
+                        checked={methods.watch('equipment')?.includes(item) || false}
+                        onChange={(e) => {
+                          const current = methods.watch('equipment') || [];
+                          if (e.target.checked) {
+                            methods.setValue('equipment', [...current, item]);
+                          } else {
+                            methods.setValue('equipment', current.filter((eq: string) => eq !== item));
+                          }
+                        }}
+                      />} 
+                      label={item}
+                    />
                   ))}
-                </RHFTextField>
+                </Stack>
+              </Box>
 
-                <Box>
-                  <Typography variant="subtitle2" sx={{ mb: 2 }}>
-                    Presidi
-                  </Typography>
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                  Paziente trasportato in
+                </Typography>
+                <RadioGroup name="position">
                   <Stack 
                     spacing={1} 
                     direction={isMobile ? 'column' : 'row'}
@@ -376,344 +584,646 @@ export default function SecondaryServiceForm({
                           border: '1px solid',
                           borderColor: 'divider',
                           borderRadius: 1,
-                          p: 1,
+                          p: 0.5,
                           width: '100%',
                         },
                       }),
                     }}
                   >
-                    {EQUIPMENT.map((item) => (
+                    {POSITIONS.map((item) => (
                       <FormControlLabel 
                         key={item} 
-                        control={<Checkbox />} 
+                        value={item} 
+                        control={<Radio 
+                          checked={methods.watch('position') === item}
+                          onChange={(e) => {
+                            methods.setValue('position', e.target.value);
+                          }}
+                        />} 
                         label={item}
                       />
                     ))}
                   </Stack>
-                </Box>
+                </RadioGroup>
+              </Box>
 
-                <Box>
-                  <Typography variant="subtitle2" sx={{ mb: 2 }}>
-                    Paziente trasportato in
-                  </Typography>
-                  <RadioGroup name="position">
-                    <Stack 
-                      spacing={1} 
-                      direction={isMobile ? 'column' : 'row'}
-                      sx={{
-                        ...(isMobile && {
-                          '& .MuiFormControlLabel-root': {
-                            mx: 0,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            borderRadius: 1,
-                            p: 1,
-                            width: '100%',
-                          },
-                        }),
-                      }}
-                    >
-                      {POSITIONS.map((item) => (
-                        <FormControlLabel 
-                          key={item} 
-                          value={item} 
-                          control={<Radio />} 
-                          label={item}
-                        />
-                      ))}
-                    </Stack>
-                  </RadioGroup>
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle2" sx={{ mb: 2 }}>
-                    Difficoltà nel servizio
-                  </Typography>
-                  <Stack 
-                    spacing={1} 
-                    direction={isMobile ? 'column' : 'row'}
-                    sx={{
-                      ...(isMobile && {
-                        '& .MuiFormControlLabel-root': {
-                          mx: 0,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 1,
-                          p: 1,
-                          width: '100%',
-                        },
-                      }),
-                    }}
-                  >
-                    {DIFFICULTIES.map((item) => (
-                      <FormControlLabel 
-                        key={item} 
-                        control={<Checkbox />} 
-                        label={item}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                  Difficoltà nel servizio
+                </Typography>
+                <Stack 
+                  spacing={1} 
+                  direction={isMobile ? 'column' : 'row'}
+                  sx={{
+                    ...(isMobile && {
+                      '& .MuiFormControlLabel-root': {
+                        mx: 0,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        p: 0.5,
+                        width: '100%',
+                      },
+                    }),
+                  }}
+                >
+                  {DIFFICULTIES.map((item) => (
+                    <FormControlLabel 
+                      key={item} 
+                      control={
+                      <Checkbox 
+                        checked={methods.watch('difficulties')?.includes(item) || false}
+                        onChange={(e) => {
+                          const current = methods.watch('difficulties') || [];
+                          if (e.target.checked) {
+                            methods.setValue('difficulties', [...current, item]);
+                          } else {
+                            methods.setValue('difficulties', current.filter((diff: string) => diff !== item));
+                          }
+                        }}
                       />
-                    ))}
-                  </Stack>
-                </Box>
-              </Stack>
+                      } 
+                      label={item}
+                    />
+                  ))}
+                </Stack>
+              </Box>
             </Stack>
-          </Card>
+          </Stack>
         );
 
       case 4:
         return (
-          <Card sx={{ p: { xs: 3, md: 4 } }}>
             <Stack spacing={4}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 1
-                  }}
-                >
-                  <Iconify icon="solar:notebook-outline" width={24} />
-                </Box>
-                <Box>
-                  <Typography variant="h6">Note e altri dettagli</Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                    Informazioni aggiuntive e dettagli del servizio
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Stack spacing={3}>
-                <RHFTextField name="notes" label="Note" multiline rows={3} />
-              </Stack>
-              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                <RHFTextField name="kilometers" label="Chilometri percorsi" type="number"
+              <CustomStepHeader
+                title="Note e Dettagli"
+                icon="solar:notebook-bold"
+                description="Aggiungi note e dettagli aggiuntivi"
+              />
+            <Stack spacing={3}>
+              <RHFTextField 
+                name="additional_notes" 
+                label="Note aggiuntive"
+                placeholder="Inserisci eventuali note o richieste particolari..."
+                multiline 
+                rows={3}
                 InputProps={{
-                  startAdornment: <Iconify icon="solar:map-arrow-square-bold" sx={{ color: 'text.disabled', mr: 1 }} />,
-                }}/>
-                <RHFTextField name="price" label="Prezzo del servizio" type="number"
-                InputProps={{
-                  startAdornment: <Iconify icon="solar:dollar-bold" sx={{ color: 'text.disabled', mr: 1 }} />,
-                }}/>
-              </Stack>
+                  startAdornment: <Iconify icon={ICONS.details.notes} sx={{ color: 'text.disabled', mr: 1, mt: 1.5 }} />,
+                }}
+                value={methods.watch('additional_notes')}
+                onChange={(e) => {
+                  methods.setValue('additional_notes', e.target.value);
+                }}
+              />
             </Stack>
-          </Card>
+            <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+              <RHFTextField 
+                name="kilometers" 
+                label="Chilometri percorsi"
+                type="number"
+                InputProps={{
+                  startAdornment: <Iconify icon="solar:map-arrow-square-bold-duotone" sx={{ color: 'text.disabled', mr: 1 }} />,
+                  endAdornment: <Typography sx={{ color: 'text.disabled' }}>km</Typography>,
+                }}
+                value={methods.watch('kilometers')}
+                onChange={(e) => {
+                  methods.setValue('kilometers', e.target.value);
+                }}
+              />
+              <RHFTextField 
+                name="price" 
+                label="Prezzo del servizio"
+                type="number"
+                InputProps={{
+                  startAdornment: <Iconify icon="solar:euro-bold-duotone" sx={{ color: 'text.disabled', mr: 1 }} />,
+                  endAdornment: <Typography sx={{ color: 'text.disabled' }}>€</Typography>,
+                }}
+                value={methods.watch('price')}
+                onChange={(e) => {
+                  methods.setValue('price', e.target.value);
+                }}
+              />
+            </Stack>
+          </Stack>
         );
 
       case 5:
         return (
-          <Card sx={{ p: { xs: 3, md: 4 } }}>
             <Stack spacing={4}>
+              <CustomStepHeader
+                title="Riepilogo Servizio"
+                icon="solar:clipboard-list-bold-duotone"
+              />
+
+              {/* Patient Section */}
               <Box>
-                <Typography variant="h6">Riepilogo del servizio</Typography>
-                <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                  Verifica i dati inseriti prima di creare il servizio
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                  <Iconify icon={ICONS.patient.name} width={24} />
+                  <Typography variant="subtitle1">Dati Paziente</Typography>
+                </Stack>
+
+                <Card sx={{ p: 2, borderRadius: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral' }}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                          '& .MuiTypography-root': {
+                            color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'text.secondary',
+                          },
+                          '& .MuiIconify-root': {
+                            color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'text.secondary',
+                          }
+                        }}
+                      >
+                        <Iconify icon={ICONS.patient.name} width={24} sx={{ color: 'text.secondary' }} />
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Nome Paziente
+                          </Typography>
+                          <Typography variant="body1">
+                            {methods.watch('patientName') || '-'}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                          '& .MuiTypography-root': {
+                            color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'text.secondary',
+                          },
+                          '& .MuiIconify-root': {
+                            color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'text.secondary',
+                          }
+                        }}
+                      >
+                        <Iconify icon={ICONS.patient.phone} width={24} sx={{ color: 'text.secondary' }} />
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Telefono
+                          </Typography>
+                          <Typography variant="body1">
+                            {methods.watch('phoneNumber') || '-'}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Card>
               </Box>
 
-              <Stack spacing={3} divider={<Divider flexItem />}>
-                {/* Patient Section */}
-                <Stack spacing={2}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Iconify icon="solar:user-outline" width={24} />
-                    <Typography variant="h6">Dati del paziente</Typography>
-                  </Stack>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Data servizio</Typography>
-                      <Typography>{methods.watch('serviceDate') || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Nome paziente</Typography>
-                      <Typography>{methods.watch('patientName') || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Telefono</Typography>
-                      <Typography>{methods.watch('phoneNumber') || '-'}</Typography>
-                    </Grid>
-                  </Grid>
+              {/* Service Section */}
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                  <Iconify icon={ICONS.service.type} width={24} />
+                  <Typography variant="subtitle1">Tipo Servizio</Typography>
                 </Stack>
 
-                {/* Service Section */}
-                <Stack spacing={2}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Iconify icon="solar:calendar-outline" width={24} />
-                    <Typography variant="h6">Dettagli servizio</Typography>
-                  </Stack>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Tipo servizio</Typography>
-                      <Typography>{methods.watch('serviceType') || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">In sede alle</Typography>
-                      <Typography>{methods.watch('arrivalTime') || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Partenza sede</Typography>
-                      <Typography>{methods.watch('departureTime') || '-'}</Typography>
-                    </Grid>
-                  </Grid>
-                </Stack>
-
-                {/* Transport Section */}
-                <Stack spacing={2}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Iconify icon="lineicons:ambulance" width={24} />
-                    <Typography variant="h6">Trasporto</Typography>
-                  </Stack>
-
-                  <Box sx={{ 
-                    display: 'grid', 
-                    gap: 2,
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      md: '1fr 1fr'
-                    }
-                  }}>
-                    {/* Pickup Box */}
-                    <Box sx={{ 
-                      p: 2.5, 
-                      bgcolor: (themed) => themed.palette.mode === 'light' 
-                        ? 'background.neutral'
-                        : alpha(themed.palette.background.default, 0.4),
-                      borderRadius: 1,
-                      height: '100%',
-                      border: (themed) => `solid 1px ${alpha(themed.palette.grey[500], 0.08)}`
-                    }}>
-                      <Stack spacing={2}>
-                        <Stack 
-                          direction={{ xs: 'column', sm: 'row' }} 
-                          alignItems={{ sm: 'center' }} 
-                          spacing={1}
-                          sx={{ mb: 1 }}
-                        >
-                          <Iconify icon="eva:navigation-2-fill" width={20} sx={{ color: 'primary.main' }} />
-                          <Typography variant="subtitle2">Trasportato da:</Typography>
-                        </Stack>
-
-                        <Stack spacing={2}>
-                          <Typography variant="body2">{methods.watch('pickupAddress') || '-'}</Typography>
-                          <Stack 
-                            direction={{ xs: 'column', sm: 'row' }} 
-                            spacing={{ xs: 1, sm: 3 }}
-                            divider={
-                              <Divider 
-                                orientation="vertical"
-                                flexItem 
-                                sx={{ borderStyle: 'dashed' }}
-                              />
-                            }
-                          >
-                            <Stack direction="row" spacing={1}>
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Tipo:</Typography>
-                              <Typography variant="caption">{methods.watch('pickupType') || '-'}</Typography>
-                            </Stack>
-                            <Stack direction="row" spacing={1}>
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Ore:</Typography>
-                              <Typography variant="caption">{methods.watch('pickupTime') || '-'}</Typography>
-                            </Stack>
-                          </Stack>
-                        </Stack>
-                      </Stack>
-                    </Box>
-
-                    {/* Dropoff Box */}
-                    <Box sx={{ 
-                      p: 2.5, 
-                      bgcolor: (themed) => themed.palette.mode === 'light' 
-                        ? 'background.neutral'
-                        : alpha(themed.palette.background.default, 0.4),
-                      borderRadius: 1,
-                      height: '100%',
-                      border: (themed) => `solid 1px ${alpha(themed.palette.grey[500], 0.08)}`
-                    }}>
-                      <Stack spacing={2}>
-                        <Stack 
-                          direction={{ xs: 'column', sm: 'row' }} 
-                          alignItems={{ sm: 'center' }} 
-                          spacing={1}
-                          sx={{ mb: 1 }}
-                        >
-                          <Iconify icon="eva:pin-fill" width={20} sx={{ color: 'error.main' }} />
-                          <Typography variant="subtitle2">Trasportato a:</Typography>
-                        </Stack>
-
-                        <Stack spacing={2}>
-                          <Typography variant="body2">{methods.watch('dropoffAddress') || '-'}</Typography>
-                          <Stack 
-                            direction={{ xs: 'column', sm: 'row' }} 
-                            spacing={{ xs: 1, sm: 3 }}
-                            divider={
-                              <Divider 
-                                orientation="vertical" 
-                                flexItem 
-                                sx={{ borderStyle: 'dashed' }}
-                              />
-                            }
-                          >
-                            <Stack direction="row" spacing={1}>
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Tipo:</Typography>
-                              <Typography variant="caption">{methods.watch('dropoffType') || '-'}</Typography>
-                            </Stack>
-                            <Stack direction="row" spacing={1}>
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Ore:</Typography>
-                              <Typography variant="caption">{methods.watch('dropoffTime') || '-'}</Typography>
-                            </Stack>
-                          </Stack>
-                        </Stack>
-                      </Stack>
-                    </Box>
-                  </Box>
-                </Stack>
-
-                {/* Details Section */}
-                <Stack spacing={2}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Iconify icon="solar:info-square-outline" width={24} />
-                    <Typography variant="h6">Dettagli trasporto</Typography>
-                  </Stack>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Mezzo utilizzato</Typography>
-                      <Typography>{methods.watch('vehicle') || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Posizione paziente</Typography>
-                      <Typography>{methods.watch('position') || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">Presidi utilizzati</Typography>
-                      <Typography>{methods.watch('equipment')?.join(', ') || '-'}</Typography>
-                    </Grid>
+                <Card sx={{ p: 2, borderRadius: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral' }}>
+                  <Grid container spacing={3}>
                     <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="text.secondary">Difficoltà riscontrate</Typography>
-                      <Typography>{methods.watch('difficulties')?.join(', ') || 'Nessuna'}</Typography>
+                      <Stack 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Iconify icon={ICONS.service.type} width={24} sx={{ color: 'text.secondary' }} />
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Servizio
+                          </Typography>
+                          <Typography variant="body1">
+                            {SERVICE_TYPES.find(group => 
+                              group.options.some(opt => opt.value === methods.watch('serviceType'))
+                            )?.options.find(opt => opt.value === methods.watch('serviceType'))?.label || '-'}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        spacing={1}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Iconify icon={ICONS.service.date} width={20} sx={{ color: 'text.secondary' }} />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Data Servizio
+                          </Typography>
+                        </Stack>
+                        <Typography variant="body1">
+                          {formatDate(methods.watch('serviceDate'))}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                    <Stack 
+                        spacing={1} 
+                        sx={{ 
+                            p: 2,
+                            height: 1,
+                            borderRadius: 1,
+                            bgcolor: 'background.paper',
+                            border: '1px solid',
+                            borderColor: (themed) => themed.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                        >
+                        <Stack direction="row" spacing={2} alignItems="center" sx={{ width: 1 }}>
+                          <Iconify icon={ICONS.service.time} width={24} sx={{ color: 'text.secondary' }} />
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary">
+                              Arrivo in sede
+                            </Typography>
+                            <Typography variant="body1">
+                              {methods.watch('arrivalTime') || '-'}
+                            </Typography>
+                          </Box>
+                        </Stack>
+
+                        <Stack direction="row" spacing={2} alignItems="center" sx={{ width: 1 }}>
+                          <Iconify icon={ICONS.service.time} width={24} sx={{ color: 'text.secondary' }} />
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary">
+                              Partenza dalla sede
+                            </Typography>
+                            <Typography variant="body1">
+                              {methods.watch('departureTime') || '-'}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </Stack>
                     </Grid>
                   </Grid>
+                </Card>
+              </Box>
+
+              {/* Transport Section */}
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                  <Iconify icon={ICONS.transport.location} width={24} />
+                  <Typography variant="subtitle1">Trasporto</Typography>
                 </Stack>
 
-                {/* Additional Info Section */}
-                <Stack spacing={2}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Iconify icon="solar:notebook-outline" width={24} />
-                    <Typography variant="h6">Note e altri dettagli</Typography>
-                  </Stack>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={12} md={12}>
-                      <Typography variant="subtitle2" color="text.secondary">Note</Typography>
-                      <Typography sx={{ whiteSpace: 'pre-wrap' }}>{methods.watch('notes') || '-'}</Typography>
+                <Card sx={{ p: 2, borderRadius: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral' }}>
+                  <Grid container spacing={3}>
+                    {/* Pickup Location */}
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Iconify icon="eva:navigation-2-fill" width={20} sx={{ color: 'primary.main' }} />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Trasportato da
+                          </Typography>
+                        </Stack>
+                        <Box>
+                          <Typography variant="body1">{methods.watch('pickupAddress') || '-'}</Typography>
+                          <Stack direction="row" spacing={3} sx={{ mt: 1 }}>
+                            <Stack direction="row" spacing={1}>
+                              <Typography variant="body2" color="text.secondary">Tipo:</Typography>
+                              <Typography variant="body2">{methods.watch('pickupType') || '-'}</Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1}>
+                              <Typography variant="body2" color="text.secondary">Ore:</Typography>
+                              <Typography variant="body2">{methods.watch('pickupTime') || '-'}</Typography>
+                            </Stack>
+                          </Stack>
+                        </Box>
+                      </Stack>
                     </Grid>
-                    <Grid item xs={12} sm={12} md={6}>
-                      <Typography variant="subtitle2" color="text.secondary">Chilometri percorsi</Typography>
-                      <Typography>{methods.watch('kilometers') || '0'} km</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={12} md={6}>
-                      <Typography variant="subtitle2" color="text.secondary">Prezzo del servizio</Typography>
-                      <Typography>€ {methods.watch('price') || '0'}</Typography>
+
+                    {/* Dropoff Location */}
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Iconify icon="eva:pin-fill" width={20} sx={{ color: 'error.main' }} />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Trasportato a
+                          </Typography>
+                        </Stack>
+                        <Box>
+                          <Typography variant="body1">{methods.watch('dropoffAddress') || '-'}</Typography>
+                          <Stack direction="row" spacing={3} sx={{ mt: 1 }}>
+                            <Stack direction="row" spacing={1}>
+                              <Typography variant="body2" color="text.secondary">Tipo:</Typography>
+                              <Typography variant="body2">{methods.watch('dropoffType') || '-'}</Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1}>
+                              <Typography variant="body2" color="text.secondary">Ore:</Typography>
+                              <Typography variant="body2">{methods.watch('dropoffTime') || '-'}</Typography>
+                            </Stack>
+                          </Stack>
+                        </Box>
+                      </Stack>
                     </Grid>
                   </Grid>
+                </Card>
+              </Box>
+
+              {/* Details Section */}
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                  <Iconify icon={ICONS.details.vehicle} width={24} />
+                  <Typography variant="subtitle1">Dettagli Trasporto</Typography>
                 </Stack>
-              </Stack>
+
+                <Card sx={{ p: 2, borderRadius: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral' }}>
+                  <Grid container spacing={3}>
+                    {/* Vehicle */}
+                    <Grid item xs={12} sm={12}>
+                      <Stack 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Iconify icon={ICONS.details.vehicle} width={24} sx={{ color: 'text.secondary' }} />
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Mezzo utilizzato
+                          </Typography>
+                          <Typography variant="body1">
+                            {methods.watch('vehicle') || '-'}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Grid>
+
+                    {/* Position */}
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Iconify icon={ICONS.details.position} width={24} sx={{ color: 'text.secondary' }} />
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Paziente trasportato in
+                          </Typography>
+                          <Typography variant="body1">
+                            {methods.watch('position') || '-'}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Grid>
+
+                    {/* Equipment */}
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Iconify icon={ICONS.details.equipment} width={20} sx={{ color: 'text.secondary' }} />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Presidi utilizzati
+                          </Typography>
+                        </Stack>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {methods.watch('equipment')?.length ? (
+                            methods.watch('equipment').map((eq: string) => (
+                              <Stack 
+                                key={eq} 
+                                direction="row" 
+                                spacing={0.5} 
+                                alignItems="center"
+                                sx={{
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: 1,
+                                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral',
+                                  border: '1px solid',
+                                  borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                                }}
+                              >
+                                <Iconify icon={ICONS.details.equipment} width={16} sx={{ color: 'text.secondary' }} />
+                                <Typography variant="body2">{eq}</Typography>
+                              </Stack>
+                            ))
+                          ) : (
+                            <Typography>Nessuno</Typography>
+                          )}
+                        </Box>
+                      </Stack>
+                    </Grid>
+
+                    {/* Difficulties */}
+                    <Grid item xs={12}>
+                      <Stack 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Iconify icon={ICONS.details.difficulty} width={20} sx={{ color: 'text.secondary' }} />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Difficoltà riscontrate
+                          </Typography>
+                        </Stack>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {methods.watch('difficulties')?.length ? (
+                            methods.watch('difficulties').map((diff: string) => (
+                              <Stack 
+                                key={diff} 
+                                direction="row" 
+                                spacing={0.5} 
+                                alignItems="center"
+                                sx={{
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: 1,
+                                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral',
+                                  border: '1px solid',
+                                  borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                                }}
+                              >
+                                <Iconify icon={ICONS.details.difficulty} width={16} sx={{ color: 'text.secondary' }} />
+                                <Typography variant="body2">{diff}</Typography>
+                              </Stack>
+                            ))
+                          ) : (
+                            <Typography>Nessuna</Typography>
+                          )}
+                        </Box>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Card>
+              </Box>
+
+              {/* Additional Info Section */}
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                  <Iconify icon={ICONS.details.notes} width={24} />
+                  <Typography variant="subtitle1">Note e Altri Dettagli</Typography>
+                </Stack>
+
+                <Card sx={{ p: 2, borderRadius: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'background.neutral' }}>
+                  <Grid container spacing={3}>
+                    {/* Notes */}
+                    <Grid item xs={12}>
+                      <Stack 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Iconify icon={ICONS.details.notes} width={20} sx={{ color: 'text.secondary' }} />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Note aggiuntive
+                          </Typography>
+                        </Stack>
+                        <Typography sx={{ whiteSpace: 'pre-wrap' }}>
+                          {methods.watch('additional_notes') || 'Nulla da segnalare'}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+
+                    {/* Kilometers and Price */}
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Iconify icon="solar:map-arrow-square-bold-duotone" width={24} sx={{ color: 'text.secondary' }} />
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Chilometri percorsi
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} alignItems="baseline">
+                            <Typography variant="h6">
+                              {methods.watch('kilometers') || '0'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              km
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </Stack>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Stack 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          p: 2,
+                          height: 1,
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'grey.200',
+                        }}
+                      >
+                        <Iconify icon="solar:euro-bold-duotone" width={24} sx={{ color: 'text.secondary' }} />
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Prezzo del servizio
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} alignItems="baseline">
+                            <Typography variant="h6">
+                              {methods.watch('price') || '0'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              €
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Card>
+              </Box>
             </Stack>
-          </Card>
         );
 
       default:
@@ -721,44 +1231,18 @@ export default function SecondaryServiceForm({
     }
   };
 
-  const getStepError = (step: number): string | undefined => {
-    switch (step) {
-      case 0:
-        return errors.serviceDate || errors.patientName || errors.phoneNumber;
-      case 1:
-        return errors.serviceType || errors.arrivalTime || errors.departureTime;
-      case 2:
-        return errors.pickupAddress || errors.pickupType || errors.pickupTime || errors.dropoffAddress || errors.dropoffType || errors.dropoffTime;
-      case 3:
-        return errors.vehicle || errors.equipment || errors.position || errors.difficulties;
-      case 4:
-        return errors.notes || errors.kilometers || errors.price;
-      default:
-        return undefined;
-    }
-  };
-
-  const renderBackToSelection = () => (
-    <Button
-      startIcon={<Iconify icon="eva:arrow-ios-back-fill" />}
-      color="inherit"
-      disabled={activeStep === 0}
-      onClick={onBack}
-    >
-      Indietro
-    </Button>
-  );
-
   return (
-    <>
-      <Stack spacing={4}>
-        <StepperContent activeStep={activeStep} />
-        {renderStepContent(activeStep)}
-        {!isLastStep && getStepError(activeStep) && (
-              <Alert severity="warning" sx={{ py: 0.5 }}>
-                Completa tutti i campi obbligatori
-              </Alert>
-            )}
+    <Stack spacing={4}>
+        <ServiceStepper activeStep={activeStep} steps={SECONDARY_STEPS as any} />
+
+        <Card sx={{ p: { xs: 3, md: 4 } }}>
+            {renderStepContent(activeStep)}
+        </Card>
+        {!isLastStep && !isStepValid(activeStep) && (
+          <Alert severity="warning" sx={{ py: 0.5 }}>
+            Completa tutti i campi obbligatori
+          </Alert>
+        )}
 
         <Stack direction="row" spacing={2} sx={{ mt: 3, justifyContent: 'space-between' }}>
           <Stack direction="row" spacing={2}>
@@ -769,32 +1253,33 @@ export default function SecondaryServiceForm({
             >
               Annulla
             </Button>
-            {renderBackToSelection()}
+            <Button
+              startIcon={<Iconify icon="eva:arrow-ios-back-fill" />}
+              color="inherit"
+              disabled={activeStep === 0}
+              onClick={handleBack}
+            >
+              Indietro
+            </Button>
           </Stack>
 
           <Stack direction="row" spacing={2}>
             {isLastStep ? (
               <LoadingButton
+                fullWidth
+                size="large"
                 type="submit"
                 variant="contained"
                 loading={isSubmitting}
-                startIcon={<Iconify icon="eva:checkmark-fill" />}
-                sx={{
-                  bgcolor: (themed) => themed.palette.mode === 'light' ? 'grey.800' : 'grey.50',
-                  color: (themed) => themed.palette.mode === 'light' ? 'common.white' : 'grey.800',
-                  '&:hover': {
-                    bgcolor: (themed) => themed.palette.mode === 'light' ? 'grey.700' : 'grey.200',
-                  },
-                }}
               >
-                Crea servizio
+                {isEditMode ? 'Aggiorna servizio' : 'Crea servizio'}
               </LoadingButton>
             ) : (
               <Button
                 variant="contained"
                 endIcon={<Iconify icon="eva:arrow-ios-forward-fill" />}
-                onClick={onNext}
-                disabled={!currentStepValid}
+                onClick={handleNext}
+                disabled={!isStepValid(activeStep) || !areFieldsFilled(activeStep)}
               >
                 Avanti
               </Button>
@@ -802,6 +1287,5 @@ export default function SecondaryServiceForm({
           </Stack>
         </Stack>
       </Stack>
-    </>
   );
 } 
