@@ -424,8 +424,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
   // ---- Share / download image ----
   const handleDownloadImage = async () => {
     if (!cardRef.current) return;
-    // Open immediately to avoid popup blockers on mobile after async work.
-    const mobilePreviewWindow = isMobile ? window.open('', '_blank') : null;
     setIsLoading(true);
 
     try {
@@ -440,8 +438,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
         const link = document.createElement('a');
         link.href = blobUrl;
         link.download = payload.filename;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -460,9 +456,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
     } catch (error: any) {
-      if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
-        mobilePreviewWindow.close();
-      }
       console.error('Error downloading image:', error);
     } finally {
       setIsLoading(false);
