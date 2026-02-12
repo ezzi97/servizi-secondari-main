@@ -370,56 +370,81 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
     return message;
   };
 
-  // ---- Download image ----
+  const createImagePayload = async () => {
+    if (!cardRef.current) return null;
+
+    // Small delay to ensure Iconify SVGs have loaded from API
+    await new Promise((r) => { setTimeout(r, 150); });
+
+    const dataUrl = await domToPng(cardRef.current, {
+      scale: 3,
+      backgroundColor: '#ffffff',
+      width: 500,
+      style: {
+        width: '500px',
+        maxWidth: '500px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+      },
+      onCloneNode: (node: Node) => {
+        if (node instanceof HTMLElement && node.ownerDocument) {
+          // Force light-mode CSS variables on the cloned document root
+          // so the captured image always looks correct regardless of dark/light mode
+          const root = node.ownerDocument.documentElement;
+          root.style.setProperty('--palette-text-primary', 'rgba(0,0,0,0.87)');
+          root.style.setProperty('--palette-text-primaryChannel', '0 0 0');
+          root.style.setProperty('--palette-text-secondary', 'rgba(0,0,0,0.6)');
+          root.style.setProperty('--palette-text-secondaryChannel', '0 0 0');
+          root.style.setProperty('--palette-text-disabled', 'rgba(0,0,0,0.38)');
+          root.style.setProperty('--palette-background-paper', '#ffffff');
+          root.style.setProperty('--palette-background-paperChannel', '255 255 255');
+          root.style.setProperty('--palette-background-default', '#f5f5f5');
+          root.style.setProperty('--palette-background-defaultChannel', '245 245 245');
+          root.style.setProperty('--palette-background-neutral', '#eeeeee');
+          root.style.setProperty('--palette-divider', 'rgba(0,0,0,0.12)');
+          root.style.setProperty('--palette-action-hover', 'rgba(0,0,0,0.04)');
+          root.style.setProperty('--palette-action-selected', 'rgba(0,0,0,0.08)');
+          root.style.setProperty('--palette-action-active', 'rgba(0,0,0,0.54)');
+          // Remove the transition class to avoid layout artifacts
+          root.classList.remove('theme-transitioning');
+        }
+      },
+    });
+
+    const filename = `servizio-${serviceData.id || 'share'}.png`;
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const file = new File([blob], filename, { type: 'image/png' });
+
+    return { dataUrl, blob, file, filename };
+  };
+
+  // ---- Share / download image ----
   const handleDownloadImage = async () => {
     if (!cardRef.current) return;
     setIsLoading(true);
 
     try {
-      // Small delay to ensure Iconify SVGs have loaded from API
-      await new Promise((r) => { setTimeout(r, 150); });
+      const payload = await createImagePayload();
+      if (!payload) return;
 
-      const dataUrl = await domToPng(cardRef.current, {
-        scale: 3,
-        backgroundColor: '#ffffff',
-        width: 500,
-        style: {
-          width: '500px',
-          maxWidth: '500px',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        },
-        onCloneNode: (node: Node) => {
-          if (node instanceof HTMLElement && node.ownerDocument) {
-            // Force light-mode CSS variables on the cloned document root
-            // so the captured image always looks correct regardless of dark/light mode
-            const root = node.ownerDocument.documentElement;
-            root.style.setProperty('--palette-text-primary', 'rgba(0,0,0,0.87)');
-            root.style.setProperty('--palette-text-primaryChannel', '0 0 0');
-            root.style.setProperty('--palette-text-secondary', 'rgba(0,0,0,0.6)');
-            root.style.setProperty('--palette-text-secondaryChannel', '0 0 0');
-            root.style.setProperty('--palette-text-disabled', 'rgba(0,0,0,0.38)');
-            root.style.setProperty('--palette-background-paper', '#ffffff');
-            root.style.setProperty('--palette-background-paperChannel', '255 255 255');
-            root.style.setProperty('--palette-background-default', '#f5f5f5');
-            root.style.setProperty('--palette-background-defaultChannel', '245 245 245');
-            root.style.setProperty('--palette-background-neutral', '#eeeeee');
-            root.style.setProperty('--palette-divider', 'rgba(0,0,0,0.12)');
-            root.style.setProperty('--palette-action-hover', 'rgba(0,0,0,0.04)');
-            root.style.setProperty('--palette-action-selected', 'rgba(0,0,0,0.08)');
-            root.style.setProperty('--palette-action-active', 'rgba(0,0,0,0.54)');
-            // Remove the transition class to avoid layout artifacts
-            root.classList.remove('theme-transitioning');
-          }
-        },
-      });
+      // Best mobile UX: open native share sheet when available.
+      if (navigator.canShare?.({ files: [payload.file] })) {
+        await navigator.share({ files: [payload.file], title: payload.filename });
+        return;
+      }
 
+      // Fallback for browsers that block "download" on mobile Safari.
+      const blobUrl = URL.createObjectURL(payload.blob);
       const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `servizio-${serviceData.id || 'share'}.png`;
+      link.href = blobUrl;
+      link.download = payload.filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
     } catch (error: any) {
       console.error('Error downloading image:', error);
     } finally {
@@ -491,11 +516,11 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
             fullWidth
             variant="contained"
             onClick={handleDownloadImage}
-            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="mdi:download" />}
+            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="mdi:image" />}
             disabled={isLoading}
             size="medium"
           >
-            {isLoading ? 'Creazione...' : 'Scarica'}
+            {isLoading ? 'Creazione...' : 'Condividi immagine'}
           </Button>
 
           <Tooltip title={copied ? 'Copiato!' : 'Copia testo negli appunti'} arrow>
