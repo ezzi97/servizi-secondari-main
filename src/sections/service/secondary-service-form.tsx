@@ -12,7 +12,7 @@ import { RHFTextField } from 'src/components/hook-form';
 
 import { formatDate, addMinutesToTime } from './utils';
 import { ServiceStepper, CustomStepHeader } from './components';
-import { ICONS, VEHICLES, POSITIONS, EQUIPMENT, DIFFICULTIES, TRANSPORT_TYPES, SERVICE_TYPES, mapServiceType } from './constants';
+import { ICONS, VEHICLES, POSITIONS, EQUIPMENT, DIFFICULTIES, mapServiceType, SERVICE_TYPES, TRANSPORT_TYPES } from './constants';
 
 type FormField = keyof typeof secondaryServiceDefaultValues;
 

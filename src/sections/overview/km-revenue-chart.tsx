@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 
+import type { Service } from 'src/types';
+
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Skeleton from '@mui/material/Skeleton';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
-
-import type { Service } from 'src/types';
 
 import { serviceService } from 'src/services';
 

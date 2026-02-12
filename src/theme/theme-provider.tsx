@@ -2,7 +2,7 @@ import type {} from '@mui/lab/themeAugmentation';
 import type { PaletteMode } from '@mui/material';
 import type {} from '@mui/material/themeCssVarsAugmentation';
 
-import { useMemo, useCallback, useContext, createContext } from 'react';
+import { useMemo, useContext, useCallback, createContext } from 'react';
 
 import CssBaseline from '@mui/material/CssBaseline';
 import { useColorScheme, Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';

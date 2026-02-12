@@ -1,4 +1,6 @@
-import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
+import type { Service } from 'src/types';
+
+import { format, addDays, isSameDay, startOfWeek } from 'date-fns';
 import it from 'date-fns/locale/it';
 import { useState, useEffect } from 'react';
 
@@ -14,8 +16,6 @@ import CardHeader from '@mui/material/CardHeader';
 import { alpha, useTheme } from '@mui/material/styles';
 
 import { useRouter } from 'src/routes/hooks';
-
-import type { Service } from 'src/types';
 
 import { serviceService } from 'src/services';
 

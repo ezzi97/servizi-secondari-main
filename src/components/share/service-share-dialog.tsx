@@ -19,6 +19,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import CircularProgress from '@mui/material/CircularProgress';
 import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 
+import { domToPng } from 'modern-screenshot';
+
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { mapServiceType } from 'src/sections/service/constants';
@@ -301,70 +303,53 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
     setIsLoading(true);
 
     try {
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = html2canvasModule.default;
+      // Small delay to ensure Iconify SVGs have loaded from API
+      await new Promise((r) => { setTimeout(r, 150); });
 
-      const canvas = await html2canvas(cardRef.current, {
+      const dataUrl = await domToPng(cardRef.current, {
         scale: 3,
         backgroundColor: '#ffffff',
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        onclone: (doc) => {
-          // Force light-mode CSS custom properties on the cloned document root.
-          // MUI CssVarsProvider (cssVarPrefix: '') uses --palette-* variables.
-          // Without this, dark-mode variables bleed into the captured image.
-          const root = doc.documentElement;
-          root.style.setProperty('--palette-text-primary', 'rgba(0,0,0,0.87)');
-          root.style.setProperty('--palette-text-secondary', 'rgba(0,0,0,0.6)');
-          root.style.setProperty('--palette-text-disabled', 'rgba(0,0,0,0.38)');
-          root.style.setProperty('--palette-background-paper', '#ffffff');
-          root.style.setProperty('--palette-background-default', '#f5f5f5');
-          root.style.setProperty('--palette-background-neutral', '#eeeeee');
-          root.style.setProperty('--palette-divider', 'rgba(0,0,0,0.12)');
-          root.style.setProperty('--palette-action-hover', 'rgba(0,0,0,0.04)');
-          root.style.setProperty('--palette-action-selected', 'rgba(0,0,0,0.08)');
-          root.style.setProperty('--palette-action-active', 'rgba(0,0,0,0.54)');
-
-          // Also remove the theme-transitioning class to avoid !important transitions
-          root.classList.remove('theme-transitioning');
-
-          const el = doc.querySelector('[data-card-ref="true"]');
-          if (el instanceof HTMLElement) {
-            el.style.width = '500px';
-            el.style.maxWidth = '500px';
-            el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-            el.style.borderRadius = '8px';
-            el.style.backgroundColor = '#ffffff';
-            el.style.overflow = 'hidden';
-
-            // Walk all children and bake in computed colors as inline styles
-            // to guarantee html2canvas captures the correct colours
-            el.querySelectorAll('*').forEach(child => {
-              if (child instanceof HTMLElement) {
-                const computed = doc.defaultView?.getComputedStyle(child);
-                if (computed) {
-                  child.style.color = computed.color;
-                  child.style.backgroundColor = computed.backgroundColor;
-                  child.style.borderColor = computed.borderColor;
-                }
-              }
-            });
+        width: 500,
+        style: {
+          width: '500px',
+          maxWidth: '500px',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        },
+        onCloneNode: (node: Node) => {
+          if (node instanceof HTMLElement && node.ownerDocument) {
+            // Force light-mode CSS variables on the cloned document root
+            // so the captured image always looks correct regardless of dark/light mode
+            const root = node.ownerDocument.documentElement;
+            root.style.setProperty('--palette-text-primary', 'rgba(0,0,0,0.87)');
+            root.style.setProperty('--palette-text-primaryChannel', '0 0 0');
+            root.style.setProperty('--palette-text-secondary', 'rgba(0,0,0,0.6)');
+            root.style.setProperty('--palette-text-secondaryChannel', '0 0 0');
+            root.style.setProperty('--palette-text-disabled', 'rgba(0,0,0,0.38)');
+            root.style.setProperty('--palette-background-paper', '#ffffff');
+            root.style.setProperty('--palette-background-paperChannel', '255 255 255');
+            root.style.setProperty('--palette-background-default', '#f5f5f5');
+            root.style.setProperty('--palette-background-defaultChannel', '245 245 245');
+            root.style.setProperty('--palette-background-neutral', '#eeeeee');
+            root.style.setProperty('--palette-divider', 'rgba(0,0,0,0.12)');
+            root.style.setProperty('--palette-action-hover', 'rgba(0,0,0,0.04)');
+            root.style.setProperty('--palette-action-selected', 'rgba(0,0,0,0.08)');
+            root.style.setProperty('--palette-action-active', 'rgba(0,0,0,0.54)');
+            // Remove the transition class to avoid layout artifacts
+            root.classList.remove('theme-transitioning');
           }
-        }
+        },
       });
 
-      // Try native share on mobile, fallback to download
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png')
-      );
+      // Convert data URL to blob for native sharing
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
       const file = new File([blob], `servizio-${serviceData.id || 'share'}.png`, { type: 'image/png' });
 
-      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+      if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] });
       } else {
-        // Fallback: download link
-        const dataUrl = canvas.toDataURL('image/png');
+        // Fallback: download the image
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = file.name;
@@ -378,7 +363,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
       // AbortError = user cancelled share sheet, not a real error
       if (error?.name !== 'AbortError') {
         console.error('Error sharing image:', error);
-        alert('Non è stato possibile condividere l\'immagine.');
       }
     } finally {
       setIsLoading(false);
