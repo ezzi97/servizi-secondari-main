@@ -422,6 +422,8 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
   // ---- Share / download image ----
   const handleDownloadImage = async () => {
     if (!cardRef.current) return;
+    // Open immediately to avoid popup blockers on mobile after async work.
+    const mobilePreviewWindow = isMobile ? window.open('', '_blank') : null;
     setIsLoading(true);
 
     try {
@@ -430,12 +432,27 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
 
       // Best mobile UX: open native share sheet when available.
       if (navigator.canShare?.({ files: [payload.file] })) {
+        if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
+          mobilePreviewWindow.close();
+        }
         await navigator.share({ files: [payload.file], title: payload.filename });
         return;
       }
 
       // Fallback for browsers that block "download" on mobile Safari.
       const blobUrl = URL.createObjectURL(payload.blob);
+
+      if (isMobile) {
+        if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
+          mobilePreviewWindow.location.href = blobUrl;
+        } else {
+          window.open(blobUrl, '_blank');
+        }
+        // Keep URL alive a bit longer in case the new tab loads slowly.
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 20000);
+        return;
+      }
+
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = payload.filename;
@@ -446,6 +463,9 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
     } catch (error: any) {
+      if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
+        mobilePreviewWindow.close();
+      }
       console.error('Error downloading image:', error);
     } finally {
       setIsLoading(false);
