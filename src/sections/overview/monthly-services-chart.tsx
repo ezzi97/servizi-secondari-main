@@ -95,6 +95,9 @@ export function MonthlyServicesChart() {
     colors: chartColors,
     stroke: { width: 0 },
     xaxis: { categories },
+    yaxis: {
+      stepSize: 1,
+    },
     tooltip: {
       y: {
         formatter: (value: number) => `${value} servizi`,

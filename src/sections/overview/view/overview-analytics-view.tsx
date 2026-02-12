@@ -8,6 +8,7 @@ import {
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useAuth } from 'src/contexts/auth-context';
 import { useServices } from 'src/contexts/service-context';
+import { Iconify } from 'src/components/iconify';
 
 import { WeeklyCalendar } from '../weekly-calendar';
 import { UpcomingServices } from '../upcoming-services';
@@ -42,7 +43,7 @@ export function OverviewAnalyticsView() {
             title="Servizi completati"
             total={stats?.completed ?? 0}
             loading={statsLoading}
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-bag.svg" />}
+            icon={<Iconify icon="mdi:check-decagram" width={40} />}
             sx={{ height: '100%' }}
           />
         </Grid>
@@ -53,7 +54,7 @@ export function OverviewAnalyticsView() {
             total={stats?.totalKilometers ?? 0}
             loading={statsLoading}
             color="secondary"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-users.svg" />}
+            icon={<Iconify icon="mdi:road-variant" width={40} />}
             sx={{ height: '100%' }}
           />
         </Grid>
@@ -64,7 +65,7 @@ export function OverviewAnalyticsView() {
             total={stats?.pending ?? 0}
             loading={statsLoading}
             color="info"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-users.svg" />}
+            icon={<Iconify icon="mdi:clock-alert-outline" width={40} />}
             sx={{ height: '100%' }}
           />
         </Grid>
@@ -75,7 +76,7 @@ export function OverviewAnalyticsView() {
             total={stats?.total ?? 0}
             loading={statsLoading}
             color="warning"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-users.svg" />}
+            icon={<Iconify icon="solar:clipboard-list-bold" width={40} />}
             sx={{ height: '100%' }}
           />
         </Grid>
