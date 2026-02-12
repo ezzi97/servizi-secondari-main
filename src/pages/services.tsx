@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { CONFIG } from 'src/config-global';
 import { DashboardContent } from 'src/layouts/dashboard/main';
 
-import { UserView } from 'src/sections/user/view';
+import { AllServicesView } from 'src/sections/user/view';
 // ----------------------------------------------------------------------
 
 export default function Page() {
@@ -13,7 +13,7 @@ export default function Page() {
         <title> {`Servizi - ${CONFIG.appName}`}</title>
       </Helmet>
       <DashboardContent maxWidth="xl">
-        <UserView />
+        <AllServicesView />
       </DashboardContent>
     </>
   );

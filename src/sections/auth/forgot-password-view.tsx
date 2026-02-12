@@ -10,7 +10,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
 
-import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
 import { useAppTheme } from 'src/hooks/use-theme-mode';
@@ -18,7 +17,6 @@ import { useAppTheme } from 'src/hooks/use-theme-mode';
 import { FormProvider, RHFTextField } from 'src/components/hook-form';
 
 export default function ForgotPasswordView() {
-  const router = useRouter();
   const { mode } = useAppTheme();
   
   const [error, setError] = useState('');
@@ -45,7 +43,6 @@ export default function ForgotPasswordView() {
     try {
       setError('');
       // Add your password reset logic here
-      console.log('DATA', data);
       await new Promise((resolve) => setTimeout(resolve, 500));
       
       setEmailSent(true);

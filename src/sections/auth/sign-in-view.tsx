@@ -17,6 +17,8 @@ import { RouterLink } from 'src/routes/components';
 
 import { useAppTheme } from 'src/hooks/use-theme-mode';
 
+import { useAuth } from 'src/contexts/auth-context';
+
 import { Iconify } from 'src/components/iconify';
 import { FormProvider, RHFTextField } from 'src/components/hook-form';
 
@@ -25,6 +27,7 @@ import { FormProvider, RHFTextField } from 'src/components/hook-form';
 export function SignInView() {
   const router = useRouter();
   const { mode } = useAppTheme();
+  const { login, loginWithGoogle } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -54,13 +57,11 @@ export function SignInView() {
   const onSubmit = handleSubmit(async (data) => {
     try {
       setError('');
-      // Add your sign-in logic here
-      console.log('DATA', data);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await login(data.email, data.password);
       router.push('/dashboard');
     } catch (exception: any) {
       console.error(exception);
-      setError(exception.message);
+      setError(exception.message || 'Credenziali non valide');
     }
   });
 
@@ -144,14 +145,18 @@ export function SignInView() {
       </Divider>
 
       <Box gap={1} display="flex" justifyContent="center">
-        <IconButton color="inherit">
+        <IconButton
+          color="inherit"
+          onClick={async () => {
+            try {
+              setError('');
+              await loginWithGoogle();
+            } catch (e: any) {
+              setError(e.message || 'Errore login con Google');
+            }
+          }}
+        >
           <Iconify icon="logos:google-icon" />
-        </IconButton>
-        <IconButton color="inherit">
-          <Iconify icon="eva:github-fill" />
-        </IconButton>
-        <IconButton color="inherit">
-          <Iconify icon="ri:twitter-x-fill" />
         </IconButton>
       </Box>
     </FormProvider>

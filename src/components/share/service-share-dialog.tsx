@@ -1,22 +1,24 @@
-import { useRef, RefObject, useState } from 'react';
+import type { RefObject} from 'react';
+import type { UserProps } from 'src/sections/user/models';
+
+import { useRef, useState } from 'react';
+
 import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Dialog from '@mui/material/Dialog';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid';
-import Card from '@mui/material/Card';
-import Stack from '@mui/material/Stack';
 import CircularProgress from '@mui/material/CircularProgress';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
-import { UserProps } from 'src/sections/user/models';
 
 // Create a light theme to override any parent theme context
 const lightTheme = createTheme({
@@ -489,9 +491,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
     }
   };
 
-  // Helper function to check if it's a sport service
-  const isSportService = (data: UserProps) => data.visit === 'Sportivo';
-  
   // Share via WhatsApp
   const handleShareViaWhatsApp = () => {
     const isSportService = serviceData.visit === 'Sportivo';

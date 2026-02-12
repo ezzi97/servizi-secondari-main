@@ -1,28 +1,26 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { 
   Box, 
   Chip, 
+  Grid, 
   Stack, 
   Button, 
-  Tooltip, 
+  Tooltip,
   Popover,
   Divider,
-  MenuItem,
   useTheme,
   TextField,
   IconButton,
   Typography,
   useMediaQuery,
-  InputAdornment,
-  Grid
+  InputAdornment
 } from '@mui/material';
 
 import { Iconify } from 'src/components/iconify';
-import { motion } from 'framer-motion';
 
 // Define filter options
 const VISIT_OPTIONS = ['Tutti', 'Dialisi', 'Visita', 'Trasporto', 'Esami'];

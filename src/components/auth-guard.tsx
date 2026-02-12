@@ -1,18 +1,24 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+
 import { Navigate } from 'react-router-dom';
 
-// This is a simple placeholder for authentication
-// In a real app, you would check if the user is authenticated
-const isAuthenticated = true;
+import { useAuth } from 'src/contexts/auth-context';
 
 type AuthGuardProps = {
   children: ReactNode;
 };
 
 export function AuthGuard({ children }: AuthGuardProps) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Don't redirect while still checking auth state
+  if (isLoading) {
+    return null;
+  }
+
   if (!isAuthenticated) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
-} 
+}

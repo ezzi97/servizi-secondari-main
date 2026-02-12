@@ -18,6 +18,8 @@ import { RouterLink } from 'src/routes/components';
 
 import { useAppTheme } from 'src/hooks/use-theme-mode';
 
+import { useAuth } from 'src/contexts/auth-context';
+
 import { Iconify } from 'src/components/iconify';
 import { FormProvider, RHFTextField } from 'src/components/hook-form';
 
@@ -26,6 +28,7 @@ import { FormProvider, RHFTextField } from 'src/components/hook-form';
 export default function SignUpView() {
   const { mode } = useAppTheme();
   const router = useRouter();
+  const { register: registerUser, loginWithGoogle } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -90,17 +93,17 @@ export default function SignUpView() {
     try {
       setError('');
       setRegistrationSuccess(false);
-      // Add your sign-up logic here
-      console.log('DATA', data);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const fullName = `${data.firstName} ${data.lastName}`;
+      await registerUser(data.email, data.password, fullName);
       
       setRegistrationSuccess(true);
       setCountdown(5);
       reset();
       
-    } catch (exception) {
+    } catch (exception: any) {
       console.error(exception);
-      setError('Si è verificato un errore durante la registrazione. Riprova più tardi.');
+      setError(exception.message || 'Si è verificato un errore durante la registrazione. Riprova più tardi.');
       setRegistrationSuccess(false);
     }
   });
@@ -199,14 +202,18 @@ export default function SignUpView() {
         </Divider>
 
         <Box gap={1} display="flex" justifyContent="center">
-          <IconButton color="inherit">
+          <IconButton
+            color="inherit"
+            onClick={async () => {
+              try {
+                setError('');
+                await loginWithGoogle();
+              } catch (e: any) {
+                setError(e.message || 'Errore login con Google');
+              }
+            }}
+          >
             <Iconify icon="logos:google-icon" />
-          </IconButton>
-          <IconButton color="inherit">
-            <Iconify icon="eva:github-fill" />
-          </IconButton>
-          <IconButton color="inherit">
-            <Iconify icon="ri:twitter-x-fill" />
           </IconButton>
         </Box>
       </Stack>

@@ -3,8 +3,12 @@ import type { Theme, SxProps, Breakpoint } from '@mui/material/styles';
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
+import SpeedDial from '@mui/material/SpeedDial';
 import { IconButton } from '@mui/material';
+import SpeedDialAction from '@mui/material/SpeedDialAction';
 import { useTheme } from '@mui/material/styles';
+
+import { useRouter } from 'src/routes/hooks';
 
 import { useAppTheme } from 'src/hooks/use-theme-mode';
 
@@ -32,9 +36,24 @@ export type DashboardLayoutProps = {
 
 export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) {
   const theme = useTheme();
+  const router = useRouter();
   const { toggleThemeMode, mode } = useAppTheme();
 
   const [navOpen, setNavOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+
+  const fabActions = [
+    {
+      icon: <Iconify icon="lineicons:ambulance" width={22} height={22} />,
+      name: 'Secondari',
+      onClick: () => { router.push('/servizi/secondari/nuovo'); setFabOpen(false); },
+    },
+    {
+      icon: <Iconify icon="solar:basketball-bold" width={22} height={22} />,
+      name: 'Sportivi',
+      onClick: () => { router.push('/servizi/sportivi/nuovo'); setFabOpen(false); },
+    },
+  ];
 
   const layoutQuery: Breakpoint = 'lg';
 
@@ -90,7 +109,7 @@ export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) 
                 <AccountPopover
                   data={[
                     {
-                      label: 'Home',
+                      label: 'Dashboard',
                       href: '/dashboard',
                       icon: <Iconify width={22} icon="solar:home-angle-bold-duotone" />,
                     }
@@ -130,6 +149,67 @@ export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) 
       }}
     >
       <Main>{children}</Main>
+
+      {/* Global FAB for creating new services */}
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: { xs: 24, sm: 24 },
+          right: { xs: 24, sm: 24 },
+          zIndex: 30,
+        }}
+      >
+        <SpeedDial
+          ariaLabel="Nuovo Servizio"
+          icon={<Iconify icon="eva:plus-fill" width={24} />}
+          onClose={() => setFabOpen(false)}
+          onOpen={() => setFabOpen(true)}
+          open={fabOpen}
+          FabProps={{
+            sx: {
+              bgcolor: (t) => t.palette.mode === 'light' ? 'grey.800' : 'grey.50',
+              color: (t) => t.palette.mode === 'light' ? 'common.white' : 'grey.800',
+              '&:hover': {
+                bgcolor: (t) => t.palette.mode === 'light' ? 'grey.700' : 'grey.200',
+              },
+              borderRadius: 5,
+              width: 56,
+              height: 56,
+            },
+          }}
+          sx={{
+            '& .MuiSpeedDial-actions': {
+              visibility: fabOpen ? 'visible' : 'hidden',
+              height: fabOpen ? 'auto' : 0,
+              overflow: 'hidden',
+              transition: 'height 0.3s, visibility 0.3s',
+            },
+          }}
+          direction="up"
+        >
+          {fabActions.map((action) => (
+            <SpeedDialAction
+              key={action.name}
+              tooltipTitle={action.name}
+              icon={action.icon}
+              tooltipPlacement="left"
+              onClick={action.onClick}
+              FabProps={{
+                sx: {
+                  bgcolor: (t) => t.palette.mode === 'light' ? 'grey.800' : 'grey.50',
+                  color: (t) => t.palette.mode === 'light' ? 'common.white' : 'grey.800',
+                  '&:hover': {
+                    bgcolor: (t) => t.palette.mode === 'light' ? 'grey.700' : 'grey.200',
+                  },
+                  width: 56,
+                  height: 56,
+                  borderRadius: 5,
+                },
+              }}
+            />
+          ))}
+        </SpeedDial>
+      </Box>
     </LayoutSection>
   );
 }

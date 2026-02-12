@@ -26,28 +26,28 @@ type Props = {
   children: React.ReactNode;
 };
 
+function ThemeModeProvider({ children }: { children: React.ReactNode }) {
+  const { mode = 'light', setMode } = useColorScheme();
+  
+  const themeMode = useMemo(
+    () => ({
+      toggleThemeMode: () => {
+        setMode(mode === 'light' ? 'dark' : 'light');
+      },
+      mode: mode === 'system' ? 'light' : mode,
+    }),
+    [mode, setMode]
+  );
+
+  return (
+    <ThemeModeContext.Provider value={themeMode}>
+      {children}
+    </ThemeModeContext.Provider>
+  );
+}
+
 export function ThemeProvider({ children }: Props) {
   const theme = createTheme();
-
-  function ThemeModeProvider({ children: themeChildren }: { children: React.ReactNode }) {
-    const { mode = 'light', setMode } = useColorScheme();
-    
-    const themeMode = useMemo(
-      () => ({
-        toggleThemeMode: () => {
-          setMode(mode === 'light' ? 'dark' : 'light');
-        },
-        mode: mode === 'system' ? 'light' : mode,
-      }),
-      [mode, setMode]
-    );
-
-    return (
-      <ThemeModeContext.Provider value={themeMode}>
-        {themeChildren}
-      </ThemeModeContext.Provider>
-    );
-  }
 
   return (
     <CssVarsProvider theme={theme} defaultMode="light">

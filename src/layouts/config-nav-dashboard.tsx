@@ -13,18 +13,8 @@ export const navData = [
     icon: icon('ic-analytics'),
   },
   {
-    title: 'Servizi archiviati',
-    path: '/servizi-archiviati',
+    title: 'Servizi',
+    path: '/tutti-servizi',
     icon: icon('ic-user'),
-  },
-  {
-    title: 'Accedi',
-    path: '/',
-    icon: icon('ic-lock'),
-  },
-  {
-    title: 'Not found',
-    path: '/404',
-    icon: icon('ic-disabled'),
-  },
+  }
 ];

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
 import Tooltip from '@mui/material/Tooltip';
@@ -6,11 +7,13 @@ import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import IconButton from '@mui/material/IconButton';
 
+import { useRouter } from 'src/routes/hooks';
+
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
-import { useRouter } from 'src/routes/hooks';
 import ServiceShareDialog from 'src/components/share/service-share-dialog';
-import { UserProps } from './models';
+
+import type { UserProps } from './models';
 
 // ----------------------------------------------------------------------
 
@@ -53,44 +56,52 @@ export function UserTableRow({ row }: UserTableRowProps) {
       <TableRow
         hover
         tabIndex={-1}
-        role="checkbox"
         sx={{ display: { xs: 'table-row', sm: 'none' } }}
       >
-        <TableCell colSpan={6} sx={{ padding: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Top row */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Avatar alt={row.name} src={row.avatarUrl} />
-              <Box>
-                <Box sx={{ typography: 'subtitle2' }}>{row.name}</Box>
-                <Box sx={{ typography: 'body2', color: 'text.secondary' }}>{row.visit}</Box>
+        <TableCell colSpan={5} sx={{ p: 2 }}>
+          {/* Top: Avatar + Name / Type · Date */}
+          <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5 }}>
+          <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: row.visit === 'Sportivo' ? 'info.lighter' : 'warning.lighter',
+                    color: row.visit === 'Sportivo' ? 'info.darker' : 'warning.darker',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Iconify
+                    icon={row.visit === 'Sportivo' ? 'solar:flag-bold-duotone' : 'mdi:ambulance'}
+                    width={22}
+                  />
+                </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ typography: 'subtitle2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {row.name}
+              </Box>
+              <Box sx={{ typography: 'body2', color: 'text.secondary' }}>
+                {row.visit} &middot; {row.timestamp}
               </Box>
             </Box>
+          </Box>
 
-            {/* Date and time */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Box sx={{ typography: 'body2', color: 'text.secondary' }}>{row.timestamp}</Box>
-              <Box sx={{ typography: 'body2', color: 'text.secondary' }}>{row.date}</Box>
-            </Box>
-
-            {/* Bottom row */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>{row.visit}</Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <TableCell>{renderStatus}</TableCell>
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <IconButton color="primary" onClick={handleEdit}>
-                  <Iconify icon="eva:edit-fill" />
-                </IconButton>
-                <IconButton color="error">
-                  <Iconify icon="solar:archive-down-minimlistic-bold-duotone" />
-                </IconButton>
-                <IconButton color="success" onClick={handleOpenShareDialog}>
-                  <Iconify icon="solar:share-bold" />
-                </IconButton>
-              </Box>
+          {/* Bottom: Status left, actions right */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {renderStatus}
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <IconButton size="small" color="primary" onClick={handleEdit}>
+                <Iconify icon="eva:edit-fill" width={18} />
+              </IconButton>
+              <IconButton size="small" color="error">
+                <Iconify icon="solar:archive-down-minimlistic-bold-duotone" width={18} />
+              </IconButton>
+              <IconButton size="small" color="success" onClick={handleOpenShareDialog}>
+                <Iconify icon="solar:share-bold" width={18} />
+              </IconButton>
             </Box>
           </Box>
         </TableCell>
@@ -105,8 +116,24 @@ export function UserTableRow({ row }: UserTableRowProps) {
       >
         <TableCell component="th" scope="row">
           <Box gap={2} display="flex" alignItems="center">
-            <Avatar alt={row.name} src={row.avatarUrl} />
-            {row.name}
+          <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: row.visit === 'Sportivo' ? 'info.lighter' : 'warning.lighter',
+                    color: row.visit === 'Sportivo' ? 'info.darker' : 'warning.darker',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Iconify
+                    icon={row.visit === 'Sportivo' ? 'solar:flag-bold-duotone' : 'mdi:ambulance'}
+                    width={22}
+                  />
+                </Box>{row.name}
           </Box>
         </TableCell>
 

@@ -1,42 +1,21 @@
-import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { yupResolver } from '@hookform/resolvers/yup';
 
-import { Alert, Stack, Typography, CircularProgress, Box } from '@mui/material';
+import { Box, Alert, Stack, Typography, CircularProgress } from '@mui/material';
 
-// Import mock data first to fix import order
-import { _users } from 'src/_mock';
 import { useRouter } from 'src/routes/hooks';
-import { FormProvider } from 'src/components/hook-form';
-import SportServiceForm, { SportServiceSchema, sportServiceDefaultValues } from './sport-service-form';
 
-// Extended user type to include all the properties we need
-interface ExtendedUserProps {
-  id: string;
-  name: string;
-  visit: string;
-  timestamp: string;
-  status: string;
-  avatarUrl: string;
-  eventName?: string;
-  date?: string;
-  startTime?: string;
-  endTime?: string;
-  arrivalTime?: string;
-  departureTime?: string;
-  summary?: string;
-  organizerName?: string;
-  organizerContact?: string;
-  vehicle?: string;
-  bag?: string;
-  equipmentItems?: string[];
-  notes?: string;
-}
+import { serviceService } from 'src/services';
+
+import { FormProvider } from 'src/components/hook-form';
+
+import SportServiceForm, { SportServiceSchema, sportServiceDefaultValues } from './sport-service-form';
 
 export function EditSportServiceView() {
   const router = useRouter();
-  const { id } = useParams(); // Get the service ID from URL
+  const { id } = useParams();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [serviceData, setServiceData] = useState<any>(null);
@@ -47,50 +26,22 @@ export function EditSportServiceView() {
     mode: 'onChange',
   });
 
-  // Fetch service data based on ID
+  // Fetch service data from API
   useEffect(() => {
     const fetchServiceData = async () => {
       try {
         setLoading(true);
-        // In a real app, you would fetch from an API
-        // For now, we'll simulate with a timeout and mock data
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Find the service in mock data
-        const service = _users.find(user => user.id === id) as ExtendedUserProps;
-        
-        if (!service) {
+
+        const response = await serviceService.getService(id!);
+
+        if (!response.success || !response.data) {
           setError('Servizio non trovato');
           return;
         }
-        
-        // Transform the data to match the form structure
-        const formattedData = {
-          eventInfo: {
-            name: service.eventName || '',
-            date: service.date ? new Date(service.date) : null,
-            startTime: service.startTime || '',
-            endTime: service.endTime || '',
-            arrivalTime: service.arrivalTime || '',
-            departureTime: service.departureTime || '',
-            summary: service.summary || '',
-          },
-          organizerInfo: {
-            name: service.organizerName || '',
-            contact: service.organizerContact || '',
-          },
-          equipmentInfo: {
-            vehicle: service.vehicle || '',
-            bag: service.bag || '',
-            items: service.equipmentItems || [],
-            notes: service.notes || '',
-          }
-        };
-        
-        setServiceData(formattedData);
-        
-        // Reset form with the fetched data
-        methods.reset(formattedData as any);
+
+        const service = response.data;
+        setServiceData(service);
+        methods.reset(service as any);
       } catch (err) {
         console.error(err);
         setError('Errore nel caricamento dei dati');
@@ -107,12 +58,16 @@ export function EditSportServiceView() {
   const onSubmit = methods.handleSubmit(async (data) => {
     try {
       setError('');
-      console.log('UPDATED DATA', data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await serviceService.updateService(id!, data as any);
+
+      if (!response.success) {
+        throw new Error(response.message || 'Errore nell\'aggiornamento');
+      }
+
       router.push('/servizi');
-    } catch (exception) {
+    } catch (exception: any) {
       console.error(exception);
-      setError('Si è verificato un errore. Riprova più tardi.');
+      setError(exception.message || 'Si è verificato un errore. Riprova più tardi.');
     }
   });
 
@@ -156,4 +111,4 @@ export function EditSportServiceView() {
       </form>
     </FormProvider>
   );
-} 
+}

@@ -20,7 +20,7 @@ import MenuItem, { menuItemClasses } from '@mui/material/MenuItem';
 
 import { useRouter, usePathname } from 'src/routes/hooks';
 
-import { _myAccount } from 'src/_mock';
+import { useAuth } from 'src/contexts/auth-context';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -38,6 +38,11 @@ export type AccountPopoverProps = IconButtonProps & {
 export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  const displayName = user?.name || user?.email || '';
+  const email = user?.email || '';
+  const avatarUrl = (user as any)?.avatarUrl || '';
 
   const [openPopover, setOpenPopover] = useState<HTMLButtonElement | null>(null);
   const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
@@ -62,8 +67,7 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
-      // Add your logout logic here
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulated delay
+      await logout();
       handleClosePopover();
       router.push('/');
     } catch (error) {
@@ -88,8 +92,8 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
         }}
         {...other}
       >
-        <Avatar src={_myAccount.photoURL} alt={_myAccount.displayName} sx={{ width: 1, height: 1 }}>
-          {_myAccount.displayName.charAt(0).toUpperCase()}
+        <Avatar src={avatarUrl} alt={displayName} sx={{ width: 1, height: 1 }}>
+          {displayName.charAt(0).toUpperCase()}
         </Avatar>
       </IconButton>
 
@@ -107,11 +111,11 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
       >
         <Box sx={{ p: 2, pb: 1.5 }}>
           <Typography variant="subtitle2" noWrap>
-            {_myAccount?.displayName}
+            {displayName}
           </Typography>
 
           <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
-            {_myAccount?.email}
+            {email}
           </Typography>
         </Box>
 
@@ -209,19 +213,19 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
             mb: 2 
           }}>
             <Avatar 
-              src={_myAccount.photoURL} 
-              alt={_myAccount.displayName}
+              src={avatarUrl} 
+              alt={displayName}
               sx={{ 
                 width: 48, 
                 height: 48,
                 border: (theme) => `solid 2px ${theme.palette.background.neutral}`
               }}
             >
-              {_myAccount.displayName.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </Avatar>
             <Box>
               <Typography variant="subtitle1">
-                {_myAccount.displayName}
+                {displayName}
               </Typography>
             </Box>
           </Box>

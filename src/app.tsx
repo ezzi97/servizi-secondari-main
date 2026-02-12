@@ -10,6 +10,10 @@ import { Router } from 'src/routes/sections';
 import { useScrollToTop } from 'src/hooks/use-scroll-to-top';
 
 import { ThemeProvider } from 'src/theme/theme-provider';
+import { UIProvider, AuthProvider, ServiceProvider } from 'src/contexts';
+
+import { SnackbarProvider } from 'src/components/snackbar';
+
 // ----------------------------------------------------------------------
 
 export default function App() {
@@ -18,9 +22,17 @@ export default function App() {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <ThemeProvider>
-        <Suspense fallback={<div>Caricamento...</div>}>
-          <Router />
-        </Suspense>
+        <SnackbarProvider>
+          <AuthProvider>
+            <ServiceProvider>
+              <UIProvider>
+                <Suspense fallback={<div>Caricamento...</div>}>
+                  <Router />
+                </Suspense>
+              </UIProvider>
+            </ServiceProvider>
+          </AuthProvider>
+        </SnackbarProvider>
       </ThemeProvider>
     </LocalizationProvider>
   );
