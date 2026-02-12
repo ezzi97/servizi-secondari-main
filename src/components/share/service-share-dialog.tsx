@@ -446,41 +446,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
         link.click();
         document.body.removeChild(link);
 
-        const ua = navigator.userAgent;
-        const isIOS =
-          /iPad|iPhone|iPod/.test(ua) ||
-          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        // iOS Safari blocks true auto-save to Photos. Fallback to preview page.
-        if (isIOS) {
-          if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
-            mobilePreviewWindow.document.open();
-            mobilePreviewWindow.document.write(`
-              <!doctype html>
-              <html>
-                <head>
-                  <meta name="viewport" content="width=device-width, initial-scale=1" />
-                  <title>${payload.filename}</title>
-                  <style>
-                    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111; color: #fff; }
-                    .hint { padding: 10px 12px; font-size: 13px; text-align: center; background: #000; }
-                    img { display: block; width: 100%; height: auto; }
-                  </style>
-                </head>
-                <body>
-                  <div class="hint">iPhone/iPad: tieni premuto sull'immagine e scegli "Salva nelle foto"</div>
-                  <img src="${payload.dataUrl}" alt="Servizio" />
-                </body>
-              </html>
-            `);
-            mobilePreviewWindow.document.close();
-          } else {
-            window.open(blobUrl, '_blank');
-          }
-        } else if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
-          mobilePreviewWindow.close();
-        }
-
         setTimeout(() => URL.revokeObjectURL(blobUrl), 20000);
         return;
       }
@@ -572,7 +537,7 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
             disabled={isLoading}
             size="medium"
           >
-            {isLoading ? 'Creazione...' : 'Salva immagine'}
+            {isLoading ? 'Creazione...' : 'Immagine'}
           </Button>
 
           <Tooltip title={copied ? 'Copiato!' : 'Copia testo negli appunti'} arrow>
