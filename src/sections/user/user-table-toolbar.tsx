@@ -23,25 +23,33 @@ import {
 import { Iconify } from 'src/components/iconify';
 
 // Define filter options
-const VISIT_OPTIONS = ['Tutti', 'Dialisi', 'Visita', 'Trasporto', 'Esami'];
-const STATUS_OPTIONS = ['Tutti', 'Completato', 'In corso', 'Annullato', 'In attesa'];
-const VEHICLE_OPTIONS = ['Tutti', 'Auto', 'Ambulanza', 'Doblò', 'Pulmino'];
-const PRIORITY_OPTIONS = ['Tutti', 'Urgente', 'Normale', 'Programmato'];
-const TIME_OPTIONS = ['Tutti', 'Mattina', 'Pomeriggio', 'Sera'];
+const VISIT_OPTIONS = ['Tutti', 'Secondario', 'Sportivo'];
+const STATUS_OPTIONS = ['Tutti', 'Bozza', 'In attesa', 'Confermato', 'Effettuato', 'Cancellato'];
+const VEHICLE_OPTIONS = ['Tutti', 'Auto', 'Ambulanza', 'Doblò', 'Pulmino', 'Altro'];
+
+/** Map Italian status labels to MUI chip colors — matches "Prossimi servizi" color scheme */
+function getStatusChipColor(status: string): 'default' | 'warning' | 'info' | 'success' | 'error' {
+  switch (status.toLowerCase()) {
+    case 'bozza': return 'default';
+    case 'in attesa': return 'warning';
+    case 'confermato': return 'info';
+    case 'effettuato': return 'success';
+    case 'cancellato': return 'error';
+    default: return 'default';
+  }
+}
 
 type Props = {
   filterName: string;
   filterVisit: string;
   filterStatus: string;
   filterVehicle: string;
-  filterPriority: string;
-  filterTimeOfDay: string;
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterVisit: (value: string) => void;
   onFilterStatus: (value: string) => void;
   onFilterVehicle: (value: string) => void;
-  onFilterPriority: (value: string) => void;
-  onFilterTimeOfDay: (value: string) => void;
+  onOpenDateFilter?: (event: React.MouseEvent<HTMLElement>) => void;
+  hasActiveDateFilters?: boolean;
 };
 
 // Create a dark mode wrapper for the entire desktop filters section
@@ -112,14 +120,12 @@ export function UserTableToolbar({
   filterVisit,
   filterStatus,
   filterVehicle,
-  filterPriority,
-  filterTimeOfDay,
   onFilterName,
   onFilterVisit,
   onFilterStatus,
   onFilterVehicle,
-  onFilterPriority,
-  onFilterTimeOfDay,
+  onOpenDateFilter,
+  hasActiveDateFilters,
 }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -145,13 +151,10 @@ export function UserTableToolbar({
     onFilterVisit('');
     onFilterStatus('');
     onFilterVehicle('');
-    onFilterPriority('');
-    onFilterTimeOfDay('');
     if (isMobile) handleCloseFilter();
   };
   
-  const hasActiveFilters = filterName || filterVisit || filterStatus || 
-    filterVehicle || filterPriority || filterTimeOfDay;
+  const hasActiveFilters = filterName || filterVisit || filterStatus || filterVehicle;
   
   // Calculate the number of active filters
   const activeFiltersCount = [
@@ -159,8 +162,6 @@ export function UserTableToolbar({
     filterVisit, 
     filterStatus, 
     filterVehicle, 
-    filterPriority, 
-    filterTimeOfDay
   ].filter(Boolean).length;
   
   // Then wrap your desktopFilters with this component:
@@ -192,7 +193,7 @@ export function UserTableToolbar({
               fullWidth
               value={filterName}
               onChange={onFilterName}
-              placeholder="Cerca paziente..."
+              placeholder="Cerca servizio..."
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -212,7 +213,40 @@ export function UserTableToolbar({
               }}
             />
 
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, flexGrow: 1, justifyContent: 'flex-end' }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, flexGrow: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+              {/* Date filter trigger */}
+              {onOpenDateFilter && (
+                <Tooltip title="Filtra per periodo">
+                  <IconButton
+                    onClick={onOpenDateFilter}
+                    size="small"
+                    sx={{
+                      position: 'relative',
+                      ...(hasActiveDateFilters && {
+                        color: 'primary.main',
+                        bgcolor: 'primary.lighter',
+                      }),
+                    }}
+                  >
+                    <Iconify icon="mdi:calendar-filter" />
+                    {hasActiveDateFilters && (
+                      <Box
+                        component="span"
+                        sx={{
+                          top: 4,
+                          right: 4,
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          position: 'absolute',
+                          bgcolor: 'error.main',
+                        }}
+                      />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              )}
+
               {/* Advanced filters toggle */}
               <Tooltip title={showAdvancedFilters ? "Nascondi filtri avanzati" : "Mostra filtri avanzati"}>
                 <Button
@@ -259,6 +293,7 @@ export function UserTableToolbar({
                 <Chip 
                   label={`Stato: ${filterStatus}`} 
                   size="small" 
+                  color={getStatusChipColor(filterStatus)}
                   onDelete={() => onFilterStatus('')}
                 />
               )}
@@ -274,20 +309,6 @@ export function UserTableToolbar({
                   label={`Mezzo: ${filterVehicle}`} 
                   size="small" 
                   onDelete={() => onFilterVehicle('')}
-                />
-              )}
-              {filterPriority && (
-                <Chip 
-                  label={`Priorità: ${filterPriority}`} 
-                  size="small" 
-                  onDelete={() => onFilterPriority('')}
-                />
-              )}
-              {filterTimeOfDay && (
-                <Chip 
-                  label={`Orario: ${filterTimeOfDay}`} 
-                  size="small" 
-                  onDelete={() => onFilterTimeOfDay('')}
                 />
               )}
             </Stack>
@@ -326,7 +347,7 @@ export function UserTableToolbar({
                             label={option}
                             size="small"
                             onClick={() => onFilterStatus(option === filterStatus ? '' : option)}
-                            color={option === filterStatus ? 'primary' : 'default'}
+                            color={option === filterStatus ? getStatusChipColor(option) : 'default'}
                             variant={option === filterStatus ? 'filled' : 'outlined'}
                             sx={{ m: 0.5 }}
                           />
@@ -338,7 +359,7 @@ export function UserTableToolbar({
                   {/* Visit type filter */}
                   <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>
-                      Tipo visita
+                      Tipo servizio
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {VISIT_OPTIONS.map((option) => (
@@ -379,51 +400,6 @@ export function UserTableToolbar({
                     </Box>
                   </Grid>
 
-                  {/* Priority filter */}
-                  <Grid item xs={12} sm={6} md={4}>
-                    <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>
-                      Priorità
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {PRIORITY_OPTIONS.map((option) => (
-                        option !== 'Tutti' && (
-                          <Chip
-                            key={option}
-                            label={option}
-                            size="small"
-                            onClick={() => onFilterPriority(option === filterPriority ? '' : option)}
-                            color={option === filterPriority ? 'primary' : 'default'}
-                            variant={option === filterPriority ? 'filled' : 'outlined'}
-                            sx={{ m: 0.5 }}
-                          />
-                        )
-                      ))}
-                    </Box>
-                  </Grid>
-
-                  {/* Time of day filter */}
-                  <Grid item xs={12} sm={6} md={4}>
-                    <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>
-                      Fascia oraria
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {TIME_OPTIONS.map((option) => (
-                        option !== 'Tutti' && (
-                          <Chip
-                            key={option}
-                            label={option}
-                            size="small"
-                            onClick={() => onFilterTimeOfDay(option === filterTimeOfDay ? '' : option)}
-                            color={option === filterTimeOfDay ? 'primary' : 'default'}
-                            variant={option === filterTimeOfDay ? 'filled' : 'outlined'}
-                            sx={{ 
-                              m: 0.5,
-                            }}
-                          />
-                        )
-                      ))}
-                    </Box>
-                  </Grid>
                 </Grid>
 
                 {/* Action buttons */}
@@ -462,7 +438,7 @@ export function UserTableToolbar({
         fullWidth
         value={filterName}
         onChange={onFilterName}
-        placeholder="Cerca paziente..."
+        placeholder="Cerca servizio..."
           size="small"
           InputProps={{
             startAdornment: (
@@ -479,6 +455,37 @@ export function UserTableToolbar({
             ) : null,
           }}
       />
+
+      {onOpenDateFilter && (
+        <Tooltip title="Filtra per periodo">
+          <IconButton
+            onClick={onOpenDateFilter}
+            sx={{
+              position: 'relative',
+              ...(hasActiveDateFilters && {
+                color: 'primary.main',
+                bgcolor: 'primary.lighter',
+              }),
+            }}
+          >
+            <Iconify icon="mdi:calendar-filter" />
+            {hasActiveDateFilters && (
+              <Box
+                component="span"
+                sx={{
+                  top: 4,
+                  right: 4,
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  position: 'absolute',
+                  bgcolor: 'error.main',
+                }}
+              />
+            )}
+          </IconButton>
+        </Tooltip>
+      )}
 
       <Tooltip title="Filtri">
           <IconButton 
@@ -536,7 +543,7 @@ export function UserTableToolbar({
             size="small" 
             onDelete={() => onFilterStatus('')}
             sx={{ m: 0.5 }}
-            color="primary"
+            color={getStatusChipColor(filterStatus)}
             variant="outlined"
           />
         )}
@@ -555,26 +562,6 @@ export function UserTableToolbar({
             label={filterVehicle} 
             size="small" 
             onDelete={() => onFilterVehicle('')}
-            sx={{ m: 0.5 }}
-            color="primary"
-            variant="outlined"
-          />
-        )}
-        {filterPriority && (
-          <Chip 
-            label={filterPriority} 
-            size="small" 
-            onDelete={() => onFilterPriority('')}
-            sx={{ m: 0.5 }}
-            color="primary"
-            variant="outlined"
-          />
-        )}
-        {filterTimeOfDay && (
-          <Chip 
-            label={filterTimeOfDay} 
-            size="small" 
-            onDelete={() => onFilterTimeOfDay('')}
             sx={{ m: 0.5 }}
             color="primary"
             variant="outlined"
@@ -639,7 +626,7 @@ export function UserTableToolbar({
                         label={option}
                         size="small"
                         onClick={() => onFilterStatus(option === filterStatus ? '' : option)}
-                        color={option === filterStatus ? 'primary' : 'default'}
+                        color={option === filterStatus ? getStatusChipColor(option) : 'default'}
                         variant={option === filterStatus ? 'filled' : 'outlined'}
                         sx={{ m: 0.5 }}
                       />
@@ -649,7 +636,7 @@ export function UserTableToolbar({
               </Box>
 
               <Box sx={{ p: 2, borderBottom: '1px dashed', borderColor: 'divider' }}>
-                <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>Tipo visita</Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>Tipo servizio</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {VISIT_OPTIONS.map((option) => (
                     option !== 'Tutti' && (
@@ -680,46 +667,6 @@ export function UserTableToolbar({
                         color={option === filterVehicle ? 'primary' : 'default'}
                         variant={option === filterVehicle ? 'filled' : 'outlined'}
                         sx={{ m: 0.5 }}
-                      />
-                    )
-                  ))}
-                </Box>
-              </Box>
-
-              <Box sx={{ p: 2, borderBottom: '1px dashed', borderColor: 'divider' }}>
-                <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>Priorità</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    option !== 'Tutti' && (
-                      <Chip
-                        key={option}
-                        label={option}
-                        size="small"
-                        onClick={() => onFilterPriority(option === filterPriority ? '' : option)}
-                        color={option === filterPriority ? 'primary' : 'default'}
-                        variant={option === filterPriority ? 'filled' : 'outlined'}
-                        sx={{ m: 0.5 }}
-                      />
-                    )
-                  ))}
-                </Box>
-              </Box>
-
-              <Box sx={{ p: 2, borderBottom: '1px dashed', borderColor: 'divider' }}>
-                <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>Fascia oraria</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {TIME_OPTIONS.map((option) => (
-                    option !== 'Tutti' && (
-                      <Chip
-                        key={option}
-                        label={option}
-                        size="small"
-                        onClick={() => onFilterTimeOfDay(option === filterTimeOfDay ? '' : option)}
-                        color={option === filterTimeOfDay ? 'primary' : 'default'}
-                        variant={option === filterTimeOfDay ? 'filled' : 'outlined'}
-                        sx={{ 
-                          m: 0.5,
-                        }}
                       />
                     )
                   ))}

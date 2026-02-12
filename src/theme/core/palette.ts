@@ -87,6 +87,11 @@ export const text = {
     secondary: grey[600],
     disabled: grey[500],
   }),
+  dark: createPaletteChannel({
+    primary: '#FFFFFF',
+    secondary: grey[500],
+    disabled: grey[600],
+  }),
 };
 
 // Background
@@ -96,6 +101,12 @@ export const background = {
     default: grey[100],
     neutral: grey[200],
     background: '#FBCEB1',
+  }),
+  dark: createPaletteChannel({
+    paper: grey[800],
+    default: grey[900],
+    neutral: grey[700],
+    background: grey[900],
   }),
 };
 
@@ -112,6 +123,7 @@ export const baseAction = {
 
 export const action = {
   light: { ...baseAction, active: grey[600] },
+  dark: { ...baseAction, active: grey[500] },
 };
 
 /*
@@ -134,11 +146,20 @@ export const lightPalette = {
   ...basePalette,
   text: text.light,
   background: background.light,
-  action: action.light
+  action: action.light,
+};
+
+export const darkPalette = {
+  ...basePalette,
+  text: text.dark,
+  background: background.dark,
+  action: action.dark,
+  divider: varAlpha(grey['500Channel'], 0.24),
 };
 
 // ----------------------------------------------------------------------
 
-export const colorSchemes: Partial<Record<'light', ColorSystemOptions>> = {
+export const colorSchemes: Partial<Record<'light' | 'dark', ColorSystemOptions>> = {
   light: { palette: lightPalette },
+  dark: { palette: darkPalette },
 };

@@ -67,11 +67,17 @@ function mapServiceRow(row: any) {
     return { ...base, ...mapSecondaryToResponse(child) };
   }
 
-  // sport / event
+  // sport / event — also expose km/price with the sport-specific keys
+  // so the sport form can populate its fields correctly
   const child = Array.isArray(row.event_services)
     ? row.event_services[0]
     : row.event_services;
-  return { ...base, ...mapEventToResponse(child) };
+  return {
+    ...base,
+    kilometersSport: row.kilometers ?? 0,
+    priceSport: row.price ?? 0,
+    ...mapEventToResponse(child),
+  };
 }
 
 // ---- Request mapping (API → DB child columns) ----

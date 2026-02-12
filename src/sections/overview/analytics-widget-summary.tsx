@@ -4,6 +4,7 @@ import type { ChartOptions } from 'src/components/chart';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Skeleton from '@mui/material/Skeleton';
 import { useTheme } from '@mui/material/styles';
 
 import { fNumber, fPercent, fShortenNumber } from 'src/utils/format-number';
@@ -22,6 +23,8 @@ type Props = CardProps & {
   percent?: number;
   color?: ColorType;
   icon: React.ReactNode;
+  loading?: boolean;
+  formatTotal?: (value: number) => string;
   chart?: {
     series: number[];
     categories: string[];
@@ -36,6 +39,8 @@ export function AnalyticsWidgetSummary({
   chart,
   percent,
   color = 'primary',
+  loading = false,
+  formatTotal,
   sx,
   ...other
 }: Props) {
@@ -122,16 +127,31 @@ export function AnalyticsWidgetSummary({
       >
         <Box sx={{ flexGrow: 1, minWidth: 112 }}>
           <Box sx={{ mb: 1, typography: 'subtitle2' }}>{title}</Box>
-          <Box sx={{ typography: 'h4' }}>{fShortenNumber(total)}</Box>
+          <Box sx={{ typography: 'h4' }}>
+            {loading ? (
+              <Skeleton
+                variant="text"
+                width={80}
+                sx={{
+                  fontSize: '2.125rem',
+                  bgcolor: varAlpha(theme.vars.palette[color].mainChannel, 0.16),
+                }}
+              />
+            ) : (
+              formatTotal ? formatTotal(total) : fShortenNumber(total)
+            )}
+          </Box>
         </Box>
 
-        <Chart
-          type="line"
-          series={[{ data: chart?.series ?? [] }]}
-          options={chartOptions}
-          width={84}
-          height={56}
-        />
+        {!loading && (
+          <Chart
+            type="line"
+            series={[{ data: chart?.series ?? [] }]}
+            options={chartOptions}
+            width={84}
+            height={56}
+          />
+        )}
       </Box>
 
       <SvgColor

@@ -54,6 +54,73 @@ export const POSITIONS = ['Seduto', 'Barella', 'Carrozzina'];
 export const EQUIPMENT = ['Ossigeno', 'Carrozzina', 'Sedia cardiopatica', 'Altro'];
 export const DIFFICULTIES = ['Scale', 'Peso', 'Spazi stretti', 'Ascensore non funzionante', 'Altro'];
 
+export const SERVICE_TYPES = [
+  {
+    group: 'Dialisi',
+    options: [
+      { value: 'andata_dialisi', label: 'Andata dialisi' },
+      { value: 'ritorno_dialisi', label: 'Ritorno dialisi' },
+    ],
+  },
+  {
+    group: 'Visita',
+    options: [
+      { value: 'visita_medica', label: 'Visita medica' },
+      { value: 'prericovero', label: 'Prericovero' },
+      { value: 'trasfusione', label: 'Trasfusione' },
+      { value: 'visita_controllo', label: 'Visita di controllo' },
+      { value: 'medicazione', label: 'Medicazione' },
+    ],
+  },
+  {
+    group: 'Esami diagnostici',
+    options: [
+      { value: 'ecografia', label: 'Ecografia' },
+      { value: 'tac', label: 'TAC' },
+      { value: 'rx', label: 'RX' },
+      { value: 'risonanza', label: 'Risonanza magnetica' },
+      { value: 'mammografia', label: 'Mammografia' },
+      { value: 'ecodoppler', label: 'Ecodoppler' },
+    ],
+  },
+  {
+    group: 'Trasporto',
+    options: [
+      { value: 'dimissione', label: 'Dimissione' },
+      { value: 'trasferimento', label: 'Trasferimento' },
+      { value: 'ricovero', label: 'Ricovero' },
+      { value: 'trasporto_programmato', label: 'Trasporto programmato' },
+    ],
+  },
+  {
+    group: 'Altro',
+    options: [
+      { value: 'tampone', label: 'Tampone' },
+      { value: 'vaccino', label: 'Vaccino' },
+      { value: 'day_hospital', label: 'Day Hospital' },
+      { value: 'fisioterapia', label: 'Fisioterapia' },
+      { value: 'radioterapia', label: 'Radioterapia' },
+      { value: 'chemioterapia', label: 'Chemioterapia' },
+    ],
+  },
+  {
+    group: 'Sconosciuto',
+    options: [
+      { value: 'sconosciuto', label: 'Sconosciuto' },
+    ],
+  },
+] as const;
+
+/** Flat lookup map: raw DB value → display label */
+export const SERVICE_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  SERVICE_TYPES.flatMap(g => g.options.map(o => [o.value, o.label]))
+);
+
+/** Map a raw service type value to its display label */
+export function mapServiceType(raw: string): string {
+  return SERVICE_TYPE_LABELS[raw] || raw;
+}
+
 export const SPORT_EQUIPMENT = [
   { value: 'Zaino sportivo', icon: ICONS.equipment.items.backpack },
   { value: 'Ossigeno', icon: ICONS.equipment.items.oxygen },

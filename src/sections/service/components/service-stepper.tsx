@@ -5,11 +5,16 @@ import { Step, Stack, Stepper, StepLabel, useMediaQuery } from '@mui/material';
 interface ServiceStepperProps {
   activeStep: number;
   steps: Array<{ label: string }>;
+  onStepClick?: (step: number) => void;
 }
 
-export function ServiceStepper({ activeStep, steps }: ServiceStepperProps) {
+export function ServiceStepper({ activeStep, steps, onStepClick }: ServiceStepperProps) {
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery((theme: Theme) => theme.breakpoints.between('sm', 'md'));
+
+  const clickableSx = onStepClick
+    ? { cursor: 'pointer', '&:hover .MuiStepLabel-label': { color: 'primary.main' } }
+    : {};
 
   if (isMobile) {
     const halfLength = Math.ceil(steps.length / 2);
@@ -25,7 +30,12 @@ export function ServiceStepper({ activeStep, steps }: ServiceStepperProps) {
           }}
         >
           {steps.slice(0, halfLength).map((step, index) => (
-            <Step key={step.label}>
+            <Step
+              key={step.label}
+              completed={index < activeStep}
+              sx={clickableSx}
+              onClick={() => onStepClick?.(index)}
+            >
               <StepLabel>{`${index + 1}. ${step.label}`}</StepLabel>
             </Step>
           ))}
@@ -39,11 +49,19 @@ export function ServiceStepper({ activeStep, steps }: ServiceStepperProps) {
             },
           }}
         >
-          {steps.slice(halfLength).map((step, index) => (
-            <Step key={step.label}>
-              <StepLabel>{`${index + halfLength + 1}. ${step.label}`}</StepLabel>
-            </Step>
-          ))}
+          {steps.slice(halfLength).map((step, index) => {
+            const globalIndex = index + halfLength;
+            return (
+              <Step
+                key={step.label}
+                completed={globalIndex < activeStep}
+                sx={clickableSx}
+                onClick={() => onStepClick?.(globalIndex)}
+              >
+                <StepLabel>{`${globalIndex + 1}. ${step.label}`}</StepLabel>
+              </Step>
+            );
+          })}
         </Stepper>
       </Stack>
     );
@@ -60,10 +78,15 @@ export function ServiceStepper({ activeStep, steps }: ServiceStepperProps) {
       }}
     >
       {steps.map((step, index) => (
-        <Step key={step.label}>
+        <Step
+          key={step.label}
+          completed={index < activeStep}
+          sx={clickableSx}
+          onClick={() => onStepClick?.(index)}
+        >
           <StepLabel>{`${index + 1}. ${step.label}`}</StepLabel>
         </Step>
       ))}
     </Stepper>
   );
-} 
+}

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { LoadingButton } from '@mui/lab';
-import { Box, Card, Grid, Stack, Radio, Alert, Button, Divider, MenuItem, Checkbox, useTheme, Typography, RadioGroup, useMediaQuery, FormControlLabel } from '@mui/material';
+import { Box, Card, Chip, Grid, Stack, Radio, Alert, Button, Divider, MenuItem, Checkbox, useTheme, Typography, RadioGroup, useMediaQuery, FormControlLabel } from '@mui/material';
 
 import { useRouter } from 'src/routes/hooks';
 
@@ -12,7 +12,7 @@ import { RHFTextField } from 'src/components/hook-form';
 
 import { formatDate, addMinutesToTime } from './utils';
 import { ServiceStepper, CustomStepHeader } from './components';
-import { ICONS, VEHICLES, POSITIONS, EQUIPMENT, DIFFICULTIES, TRANSPORT_TYPES } from './constants';
+import { ICONS, VEHICLES, POSITIONS, EQUIPMENT, DIFFICULTIES, TRANSPORT_TYPES, SERVICE_TYPES, mapServiceType } from './constants';
 
 type FormField = keyof typeof secondaryServiceDefaultValues;
 
@@ -44,73 +44,8 @@ const SECONDARY_STEPS = [
   },
 ] as const;
 
-const SERVICE_TYPES = [
-  {
-    group: 'Dialisi',
-    options: [
-      { value: 'andata_dialisi', label: 'Andata dialisi' },
-      { value: 'ritorno_dialisi', label: 'Ritorno dialisi' },
-    ],
-  },
-  {
-    group: 'Visita',
-    options: [
-      { value: 'visita_medica', label: 'Visita medica' },
-      { value: 'prericovero', label: 'Prericovero' },
-      { value: 'trasfusione', label: 'Trasfusione' },
-      { value: 'visita_controllo', label: 'Visita di controllo' },
-      { value: 'medicazione', label: 'Medicazione' },
-    ],
-  },
-  {
-    group: 'Esami diagnostici',
-    options: [
-      { value: 'ecografia', label: 'Ecografia' },
-      { value: 'tac', label: 'TAC' },
-      { value: 'rx', label: 'RX' },
-      { value: 'risonanza', label: 'Risonanza magnetica' },
-      { value: 'mammografia', label: 'Mammografia' },
-      { value: 'ecodoppler', label: 'Ecodoppler' },
-    ],
-  },
-  {
-    group: 'Trasporto',
-    options: [
-      { value: 'dimissione', label: 'Dimissione' },
-      { value: 'trasferimento', label: 'Trasferimento' },
-      { value: 'ricovero', label: 'Ricovero' },
-      { value: 'trasporto_programmato', label: 'Trasporto programmato' },
-    ],
-  },
-  {
-    group: 'Altro',
-    options: [
-      { value: 'tampone', label: 'Tampone' },
-      { value: 'vaccino', label: 'Vaccino' },
-      { value: 'day_hospital', label: 'Day Hospital' },
-      { value: 'fisioterapia', label: 'Fisioterapia' },
-      { value: 'radioterapia', label: 'Radioterapia' },
-      { value: 'chemioterapia', label: 'Chemioterapia' },
-    ],
-  },
-  {
-    group: 'Sconosciuto',
-    options: [
-      { value: 'sconosciuto', label: 'Sconosciuto' },
-    ],
-  },
-];
-
-const SecondaryServiceSchema = Yup.object().shape({
+const secondaryServiceSchemaFields = {
   // Patient section
-  serviceDate: Yup.string()
-    .required('Data servizio è obbligatoria')
-    .test('futureDate', 'La data non può essere nel passato', (value) => {
-      if (!value) return false;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return new Date(value) >= today;
-    }),
   patientName: Yup.string().required('Nome e cognome sono obbligatori'),
   phoneNumber: Yup.string(),
   
@@ -139,6 +74,25 @@ const SecondaryServiceSchema = Yup.object().shape({
   additional_notes: Yup.string(),
   kilometers: Yup.number().min(0, 'I chilometri non possono essere negativi'),
   price: Yup.number().min(0, 'Il prezzo non può essere negativo'),
+};
+
+// Create mode: date must be today or in the future
+const SecondaryServiceSchema = Yup.object().shape({
+  serviceDate: Yup.string()
+    .required('Data servizio è obbligatoria')
+    .test('futureDate', 'La data non può essere nel passato', (value) => {
+      if (!value) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return new Date(value) >= today;
+    }),
+  ...secondaryServiceSchemaFields,
+});
+
+// Edit mode: any date is allowed
+const SecondaryServiceEditSchema = Yup.object().shape({
+  serviceDate: Yup.string().required('Data servizio è obbligatoria'),
+  ...secondaryServiceSchemaFields,
 });
 
 export const secondaryServiceDefaultValues = {
@@ -163,12 +117,20 @@ export const secondaryServiceDefaultValues = {
   price: 0,
 };
 
-export { SECONDARY_STEPS, SecondaryServiceSchema };
+export { SECONDARY_STEPS, SecondaryServiceSchema, SecondaryServiceEditSchema };
 
 interface SecondaryServiceFormProps {
   isSubmitting: boolean;
   isEditMode?: boolean;
 }
+
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Bozza', color: 'default' as const },
+  { value: 'pending', label: 'In attesa', color: 'warning' as const },
+  { value: 'confirmed', label: 'Confermato', color: 'info' as const },
+  { value: 'completed', label: 'Completato', color: 'success' as const },
+  { value: 'cancelled', label: 'Cancellato', color: 'error' as const },
+];
 
 export default function SecondaryServiceForm({ isSubmitting, isEditMode = false }: SecondaryServiceFormProps) {
   const methods = useFormContext();
@@ -176,8 +138,8 @@ export default function SecondaryServiceForm({ isSubmitting, isEditMode = false 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
   
-  // Add stepper state and handlers
-  const [activeStep, setActiveStep] = useState(0);
+  // Start at summary (last step) in edit mode, step 0 in create mode
+  const [activeStep, setActiveStep] = useState(isEditMode ? SECONDARY_STEPS.length - 1 : 0);
   
   const isLastStep = activeStep === SECONDARY_STEPS.length - 1;
 
@@ -230,7 +192,7 @@ export default function SecondaryServiceForm({ isSubmitting, isEditMode = false 
                 helperText="Seleziona la data in cui verrà effettuato il servizio"
                 sx={{ '& .MuiFormHelperText-root': { mx: 0 } }}
                 inputProps={{
-                  min: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+                  ...(isEditMode ? {} : { min: new Date().toISOString().split('T')[0] }),
                 }}
                 InputProps={{
                   startAdornment: <Iconify icon={ICONS.service.date} sx={{ color: 'text.disabled', mr: 1 }} />,
@@ -816,9 +778,7 @@ export default function SecondaryServiceForm({ isSubmitting, isEditMode = false 
                             Servizio
                           </Typography>
                           <Typography variant="body1">
-                            {SERVICE_TYPES.find(group => 
-                              group.options.some(opt => opt.value === methods.watch('serviceType'))
-                            )?.options.find(opt => opt.value === methods.watch('serviceType'))?.label || '-'}
+                            {methods.watch('serviceType') ? mapServiceType(methods.watch('serviceType')) : '-'}
                           </Typography>
                         </Box>
                       </Stack>
@@ -1233,7 +1193,26 @@ export default function SecondaryServiceForm({ isSubmitting, isEditMode = false 
 
   return (
     <Stack spacing={4}>
-        <ServiceStepper activeStep={activeStep} steps={SECONDARY_STEPS as any} />
+        {isEditMode && (
+          <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" useFlexGap>
+            {STATUS_OPTIONS.map((opt) => (
+              <Chip
+                key={opt.value}
+                label={opt.label}
+                color={opt.color}
+                variant={methods.watch('status') === opt.value ? 'filled' : 'outlined'}
+                onClick={() => methods.setValue('status', opt.value, { shouldDirty: true })}
+                sx={{ fontWeight: methods.watch('status') === opt.value ? 700 : 400 }}
+              />
+            ))}
+          </Stack>
+        )}
+
+        <ServiceStepper
+          activeStep={activeStep}
+          steps={SECONDARY_STEPS as any}
+          onStepClick={isEditMode ? (step) => setActiveStep(step) : undefined}
+        />
 
         <Card sx={{ p: { xs: 3, md: 4 } }}>
             {renderStepContent(activeStep)}

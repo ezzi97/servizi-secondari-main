@@ -1,28 +1,30 @@
 import { useForm } from 'react-hook-form';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { yupResolver } from '@hookform/resolvers/yup';
 
 import { Box, Alert, Stack, Typography, CircularProgress } from '@mui/material';
 
 import { useRouter } from 'src/routes/hooks';
 
+import { useToast } from 'src/hooks/use-toast';
+
 import { serviceService } from 'src/services';
 
 import { FormProvider } from 'src/components/hook-form';
 
-import SecondaryServiceForm, { SecondaryServiceSchema, secondaryServiceDefaultValues } from './secondary-service-form';
+import SecondaryServiceForm, { secondaryServiceDefaultValues } from './secondary-service-form';
 
 export function EditSecondaryServiceView() {
   const router = useRouter();
   const { id } = useParams();
+  const { success: showSuccess, error: showError } = useToast();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [serviceData, setServiceData] = useState<any>(null);
 
   const methods = useForm({
-    resolver: yupResolver(SecondaryServiceSchema),
-    defaultValues: secondaryServiceDefaultValues,
+    defaultValues: { ...secondaryServiceDefaultValues, status: 'draft' },
     mode: 'onChange',
   });
 
@@ -53,10 +55,14 @@ export function EditSecondaryServiceView() {
     if (id) {
       fetchServiceData();
     }
-  }, [id, methods]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-  const onSubmit = methods.handleSubmit(async (data) => {
+  // Submit handler: bypass validation, always send data to API
+  const submitData = async () => {
+    const data = methods.getValues();
     try {
+      setSubmitting(true);
       setError('');
       const response = await serviceService.updateService(id!, data as any);
 
@@ -64,12 +70,24 @@ export function EditSecondaryServiceView() {
         throw new Error(response.message || 'Errore nell\'aggiornamento');
       }
 
-      router.push('/servizi');
+      showSuccess('Servizio aggiornato con successo');
+      router.push('/tutti-servizi');
     } catch (exception: any) {
       console.error(exception);
-      setError(exception.message || 'Si è verificato un errore. Riprova più tardi.');
+      const msg = exception.message || 'Si è verificato un errore. Riprova più tardi.';
+      setError(msg);
+      showError(msg);
+    } finally {
+      setSubmitting(false);
     }
-  });
+  };
+
+  // handleSubmit wraps submitData so it handles preventDefault for us.
+  // Both onValid and onInvalid call submitData — we allow saving incomplete data.
+  const onSubmit = methods.handleSubmit(
+    async () => { await submitData(); },
+    async () => { await submitData(); }
+  );
 
   if (loading) {
     return (
@@ -88,27 +106,25 @@ export function EditSecondaryServiceView() {
   }
 
   return (
-    <FormProvider methods={methods}>
-      <form onSubmit={onSubmit}>
-        <Stack spacing={4} sx={{ mb: 4, p: 4 }}>
-          <Stack 
-            direction="row" 
-            alignItems="center" 
-            justifyContent="center"
-            sx={{ mb: 1 }}
-          >
-            <Typography variant="h4">Modifica Servizio Secondario</Typography>
-          </Stack>
-          
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          
-          <SecondaryServiceForm isSubmitting={methods.formState.isSubmitting} isEditMode />
+    <FormProvider methods={methods} onSubmit={onSubmit}>
+      <Stack spacing={4} sx={{ mb: 4, p: 4 }}>
+        <Stack 
+          direction="row" 
+          alignItems="center" 
+          justifyContent="center"
+          sx={{ mb: 1 }}
+        >
+          <Typography variant="h4">Modifica Servizio Secondario</Typography>
         </Stack>
-      </form>
+        
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
+        <SecondaryServiceForm isSubmitting={submitting} isEditMode />
+      </Stack>
     </FormProvider>
   );
 }

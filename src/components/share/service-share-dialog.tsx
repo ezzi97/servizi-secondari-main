@@ -4,340 +4,266 @@ import type { UserProps } from 'src/sections/user/models';
 import { useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
+import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import Avatar from '@mui/material/Avatar';
 import Dialog from '@mui/material/Dialog';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import CircularProgress from '@mui/material/CircularProgress';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
+import { mapServiceType } from 'src/sections/service/constants';
 
-// Create a light theme to override any parent theme context
+// Light theme for the share card (ensures consistent image export)
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
-    background: {
-      paper: '#ffffff',
-      default: '#f5f5f5',
-    },
-    text: {
-      primary: 'rgba(0, 0, 0, 0.87)',
-      secondary: 'rgba(0, 0, 0, 0.6)',
-    },
+    background: { paper: '#ffffff', default: '#f8f9fa' },
+    text: { primary: 'rgba(0, 0, 0, 0.87)', secondary: 'rgba(0, 0, 0, 0.6)' },
   },
 });
 
 // ----------------------------------------------------------------------
 
-// Association information
-const ASSOCIATION_INFO = {
-  name: 'Gruppo Volontari del Soccorso di Roccafranca e Ludriano',
-  logo: '/assets/logo/logo.png',
-  president: {
-    name: 'Marco Rossi',
-    phone: '+39 123 456 7890',
-  },
-  serviceManager: {
-    name: 'Giulia Bianchi',
-    phone: '+39 098 765 4321',
-  },
-  email: 'info@associazione.it',
-  website: 'www.associazione.it',
-};
+function getStatusColor(status: string): 'default' | 'warning' | 'info' | 'success' | 'error' {
+  switch (status.toLowerCase()) {
+    case 'bozza': return 'default';
+    case 'in attesa': return 'warning';
+    case 'confermato': return 'info';
+    case 'effettuato': return 'success';
+    case 'cancellato': return 'error';
+    default: return 'default';
+  }
+}
+
+const ACCENT = { secondary: '#1976d2', sport: '#ed6c02' };
+
+
+// Inline detail row: "icon  Label: value"
+function DetailRow({ icon, label, value }: { icon: string; label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 0.4, minWidth: 0 }}>
+      <Iconify icon={icon} width={16} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+      <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.4, wordBreak: 'break-word', minWidth: 0 }}>
+        <Typography component="span" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+          {label}:
+        </Typography>
+        {' '}{value}
+      </Typography>
+    </Stack>
+  );
+}
+
+// Build a shareable plain-text summary (no WhatsApp bold markers)
+function buildPlainTextSummary(data: UserProps): string {
+  const isSport = data.visit === 'Sportivo';
+  let text = `${isSport ? 'SERVIZIO SPORTIVO' : 'SERVIZIO SECONDARIO'}\n\n`;
+
+  text += `Data: ${data.timestamp || data.date || '-'}\n`;
+  text += `Stato: ${data.status || '-'}\n\n`;
+
+  if (isSport) {
+    if (data.eventName) text += `Evento: ${data.eventName}\n`;
+    if (data.startTime || data.endTime) text += `Orari evento: ${data.startTime || '?'} - ${data.endTime || '?'}\n`;
+    if (data.organizerName) text += `Organizzatore: ${data.organizerName}\n`;
+    if (data.organizerContact) text += `Contatto: ${data.organizerContact}\n`;
+    if (data.arrivalTime) text += `In sede alle: ${data.arrivalTime}\n`;
+    if (data.departureTime) text += `Partenza alle: ${data.departureTime}\n`;
+    if (data.vehicle) text += `Mezzo: ${data.vehicle}\n`;
+    if (data.equipmentItems && data.equipmentItems.length > 0) text += `Attrezzatura: ${data.equipmentItems.join(', ')}\n`;
+  } else {
+    if (data.name) text += `Paziente: ${data.name}\n`;
+    if (data.serviceType) text += `Tipo servizio: ${mapServiceType(data.serviceType)}\n`;
+    if (data.time) text += `Orario: ${data.time}\n`;
+    if (data.pickupLocation) text += `Ritiro: ${data.pickupLocation}${data.pickupTime ? ` alle ${data.pickupTime}` : ''}\n`;
+    if (data.destinationType) text += `Destinazione: ${data.destinationType}\n`;
+    if (data.vehicle) text += `Mezzo: ${data.vehicle}\n`;
+    if (data.position) text += `Posizione: ${data.position}\n`;
+    if (data.equipment && data.equipment.length > 0) text += `Presidi: ${data.equipment.join(', ')}\n`;
+    if (data.difficulties && data.difficulties.length > 0) text += `Difficoltà: ${data.difficulties.join(', ')}\n`;
+  }
+
+  if (data.kilometers) text += `KM: ${data.kilometers}\n`;
+  if (data.price) text += `Prezzo: ${data.price.toFixed(2)} €\n`;
+  if (data.notes) text += `\nNote: ${data.notes}\n`;
+
+  return text.trim();
+}
+
+// ----------------------------------------------------------------------
 
 interface ServiceCardProps {
   row: UserProps;
   cardRef: RefObject<HTMLDivElement>;
 }
 
-// Compressed service card for sharing
 const ServiceCard = ({ row, cardRef }: ServiceCardProps) => {
-  const isSportService = row.visit === 'Sportivo';
-  
+  const isSport = row.visit === 'Sportivo';
+  const accent = isSport ? ACCENT.sport : ACCENT.secondary;
+
+  // Main detail rows (without KM/Price — those go side-by-side)
+  const secondaryDetails = !isSport ? [
+    { icon: 'mdi:medical-bag', label: 'Tipo servizio', value: row.serviceType ? mapServiceType(row.serviceType) : undefined },
+    { icon: 'mdi:clock-check-outline', label: 'In sede alle', value: row.arrivalTime },
+    { icon: 'mdi:clock-fast', label: 'Partenza alle', value: row.departureTime },
+    { icon: 'mdi:map-marker', label: 'Ritiro', value: row.pickupLocation ? `${row.pickupLocation}${row.pickupTime ? ` alle ${row.pickupTime}` : ''}` : undefined },
+    { icon: 'mdi:hospital-building', label: 'Destinazione', value: row.destinationType },
+    { icon: 'mdi:ambulance', label: 'Mezzo', value: row.vehicle },
+    { icon: 'mdi:seat', label: 'Posizione', value: row.position },
+  ] : [];
+
+  const sportDetails = isSport ? [
+    { icon: 'mdi:calendar-star', label: 'Evento', value: row.eventName },
+    { icon: 'mdi:clock-check-outline', label: 'In sede alle', value: row.arrivalTime },
+    { icon: 'mdi:clock-fast', label: 'Partenza alle', value: row.departureTime },
+    { icon: 'mdi:clock-start', label: 'Orari evento', value: (row.startTime || row.endTime) ? `${row.startTime || '?'} - ${row.endTime || '?'}` : undefined },
+    { icon: 'mdi:account-tie', label: 'Organizzatore', value: row.organizerName },
+    { icon: 'mdi:ambulance', label: 'Mezzo', value: row.vehicle },
+  ] : [];
+
+  const details = isSport ? sportDetails : secondaryDetails;
+  const hasKmOrPrice = !!(row.kilometers || row.price);
+  const hasSecondaryEquipment = !isSport && row.equipment && row.equipment.length > 0;
+  const hasSportEquipment = isSport && row.equipmentItems && row.equipmentItems.length > 0;
+  const hasDifficulties = !isSport && row.difficulties && row.difficulties.length > 0;
+
   return (
-    <Paper 
+    <Paper
       ref={cardRef}
       data-card-ref="true"
-      sx={{ 
-        p: 0.5,
-        width: 500,
-        maxWidth: '100%',
-        bgcolor: 'background.paper',
-        boxShadow: 3,
-        borderRadius: 1.5,
-        overflow: 'hidden'
-      }}
+      elevation={3}
+      sx={{ width: { xs: '100%', sm: 500 }, maxWidth: '100%', bgcolor: 'background.paper', borderRadius: 2, overflow: 'hidden' }}
     >
-      {/* Header with logo and type */}
-      <Stack 
-        direction="row" 
-        alignItems="center" 
-        justifyContent="space-between" 
-        sx={{ 
-          mb: 0.5, 
-          pb: 0.5, 
-          px: 0.5,
-          pt: 1,
-          borderBottom: '1px solid', 
-          borderColor: 'divider' 
-        }}
-      >
-        <Stack direction="row" alignItems="center" spacing={0.75}>
-          <Avatar 
-            alt={ASSOCIATION_INFO.name} 
-            src={ASSOCIATION_INFO.logo}
-            sx={{ width: 28, height: 28 }}
-          />
-          <Box sx={{ maxWidth: '90%' }}>
-            <Typography variant="subtitle2" sx={{ 
-              fontWeight: 'bold', 
-              fontSize: '0.7rem',
-              lineHeight: 1.2,
-              whiteSpace: 'normal',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-            }}>
-              {ASSOCIATION_INFO.name}
-            </Typography>
-            <Label color="primary" sx={{ mt: 0.25, height: 16, fontSize: '0.6rem', px: 0.5 }}>
-              {isSportService ? 'Servizio Sportivo' : 'Servizio Secondario'}
-            </Label>
-          </Box>
+      {/* Accent bar */}
+      <Box sx={{ height: 4, bgcolor: accent }} />
+
+      {/* Header: type + status */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, pt: 1.5, pb: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Iconify icon={isSport ? 'mdi:trophy-outline' : 'mdi:medical-bag'} width={18} sx={{ color: accent }} />
+          <Typography variant="overline" sx={{ fontSize: '0.8rem', fontWeight: 700, color: accent, letterSpacing: 1 }}>
+            {isSport ? 'Servizio Sportivo' : 'Servizio Secondario'}
+          </Typography>
         </Stack>
+        <Label color={getStatusColor(row.status)} sx={{ fontSize: '0.75rem', height: 22, textTransform: 'capitalize' }}>
+          {row.status || '-'}
+        </Label>
       </Stack>
-      
-      {/* Main content */}
-      <Box sx={{ px: 0.5 }}>
-        {/* Patient/Event Info and Date/Status in one row */}
-        <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-          <Grid item xs={12}>
-            <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-              <Stack direction="row" spacing={0.75} alignItems="center">
-                <Avatar alt={row.name} src={row.avatarUrl} sx={{ width: 20, height: 20 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>
-                    {isSportService ? 'Evento' : 'Paziente'}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 'medium', fontSize: '0.7rem', lineHeight: 1.2 }}>
-                    {row.name || 'Non specificato'}
-                  </Typography>
-                </Box>
-              </Stack>
-            </Box>
-          </Grid>
-        </Grid>
 
-        {/* Date and details in the second row */}
-        <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-          <Grid item xs={12}>
-            <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-              <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                <Iconify icon="mdi:calendar" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Data</Typography>
-                  <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{row.date || row.timestamp || 'Non spec.'}</Typography>
-                </Box>
-              </Stack>
-            </Box>
-          </Grid>
-          <Grid item xs={5}>
-            <Box sx={{ p: 0.75, height: '100%', borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Stato</Typography>
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <Label color={(row.status === 'cancellato' && 'error') || 'success'} sx={{ fontSize: '0.6rem', height: 16, mt: 0.25 }}>
-                  {row.status || 'Non spec.'}
-                </Label>
-              </Stack>
-            </Box>
-          </Grid>
-          <Grid item xs={7}>
-            {!isSportService ? (
-              <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                  <Iconify icon="mdi:medical-bag" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Tipo Servizio</Typography>
-                    <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{row.visit || 'Non spec.'}</Typography>
-                  </Box>
-                </Stack>
-              </Box>
-            ) : (
-              <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                  <Iconify icon="mdi:calendar-star" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Nome Evento</Typography>
-                    <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{row.eventName || 'Non spec.'}</Typography>
-                  </Box>
-                </Stack>
-              </Box>
-            )}
-          </Grid>
-        </Grid>
+      <Divider />
 
-        {/* Schedule or details */}
-        <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-          <Grid item xs={12}>
-            <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-              <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                <Iconify icon="mdi:clock" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>
-                    {isSportService ? 'Orari Evento' : 'Orario'}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
-                    {isSportService ? 
-                      `Inizio: ${row.startTime || 'Non spec.'} • Fine: ${row.endTime || 'Non spec.'}` : 
-                      row.time || 'Non spec.'
-                    }
-                  </Typography>
-                </Box>
-              </Stack>
-            </Box>
-          </Grid>
-        </Grid>
+      {/* Hero: name + date */}
+      <Box sx={{ px: 2, pt: 1.5, pb: 1 }}>
+        <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.3, mb: 0.25 }}>
+          {row.name || 'Senza nome'}
+        </Typography>
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+          <Iconify icon="mdi:calendar" width={14} sx={{ color: 'text.secondary' }} />
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+            {row.timestamp || '-'}
+          </Typography>
+        </Stack>
+      </Box>
 
-        {/* Location info */}
-        <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-          {!isSportService ? (
-            <>
-              <Grid item xs={6}>
-                <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                  <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                    <Iconify icon="mdi:map-marker" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Ritiro</Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
-                        {row.pickupLocation ? `${row.pickupLocation}` : 'Non spec.'}
-                        {row.pickupTime && `, ${row.pickupTime}`}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                  <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                    <Iconify icon="mdi:hospital-building" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Destinazione</Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{row.destinationType || 'Non spec.'}</Typography>
-                    </Box>
-                  </Stack>
-                </Box>
-              </Grid>
-            </>
-          ) : (
-            <>
-              <Grid item xs={6}>
-                <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                  <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                    <Iconify icon="mdi:account-tie" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Organizzatore</Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{row.organizerName || 'Non spec.'}</Typography>
-                    </Box>
-                  </Stack>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                  <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                    <Iconify icon="mdi:clock" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Orari Sede</Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
-                        {`${row.arrivalTime || 'Non spec.'} - ${row.departureTime || 'Non spec.'}`}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </Box>
-              </Grid>
-            </>
+      <Divider />
+
+      {/* Details */}
+      {(details.some(d => d.value) || hasKmOrPrice) && (
+        <Box sx={{ px: 2, py: 1, bgcolor: 'background.default' }}>
+          {details.map((d) => (
+            <DetailRow key={d.label} icon={d.icon} label={d.label} value={d.value} />
+          ))}
+
+          {/* KM + Price side-by-side */}
+          {hasKmOrPrice && (
+            <Stack direction="row" spacing={3} sx={{ pt: 0.25 }}>
+              <DetailRow icon="mdi:road-variant" label="KM" value={row.kilometers ? `${row.kilometers}` : undefined} />
+              <DetailRow icon="mdi:currency-eur" label="Prezzo" value={row.price ? `${row.price.toFixed(2)} €` : undefined} />
+            </Stack>
           )}
-        </Grid>
+        </Box>
+      )}
 
-        {/* Vehicle and notes */}
-        <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-          <Grid item xs={!isSportService ? 6 : 12}>
-            <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-              <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                <Iconify icon="mdi:ambulance" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Mezzo</Typography>
-                  <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{row.vehicle || 'Non spec.'}</Typography>
-                </Box>
-              </Stack>
-            </Box>
-          </Grid>
-
-          {!isSportService && (
-            <Grid item xs={6}>
-              <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                <Stack direction="row" spacing={0.5} alignItems="flex-start">
-                  <Iconify icon="mdi:seat" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Posizione</Typography>
-                    <Typography variant="body2" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{row.position || 'Non spec.'}</Typography>
-                  </Box>
-                </Stack>
-              </Box>
-            </Grid>
-          )}
-        </Grid>
-
-        {/* Equipment for Sport Service */}
-        {isSportService && row.equipmentItems && row.equipmentItems.length > 0 && (
-          <Box sx={{ p: 0.75, mb: 0.5, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Attrezzatura</Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25, mt: 0.25 }}>
-              {row.equipmentItems.map((item) => (
-                <Typography 
-                  key={item} 
-                  variant="caption" 
-                  sx={{ 
-                    px: 0.5, 
-                    py: 0.1, 
-                    fontSize: '0.6rem',
-                    borderRadius: 0.5,
-                    bgcolor: 'background.default',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                  }}
-                >
-                  {item}
-                </Typography>
+      {/* Equipment (secondary) */}
+      {hasSecondaryEquipment && (
+        <>
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.5 }}>
+              Presidi utilizzati
+            </Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+              {row.equipment!.map((item) => (
+                <Chip key={item} label={item} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24 }} />
               ))}
-            </Box>
+            </Stack>
           </Box>
-        )}
-        
-        {/* Notes Section - if notes exist, but compact */}
-        {// row.notes && (
-          <Box sx={{ p: 0.75, mb: 0.5, borderRadius: 1, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-            <Stack direction="row" spacing={0.5} alignItems="flex-start">
-              <Iconify icon="mdi:note-text" width={12} sx={{ color: 'text.secondary', mt: 0.25 }} />
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block', lineHeight: 1 }}>Note</Typography>
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    fontSize: '0.7rem', 
-                    lineHeight: 1.2,
+        </>
+      )}
+
+      {/* Equipment (sport) */}
+      {hasSportEquipment && (
+        <>
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.5 }}>
+              Attrezzatura
+            </Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+              {row.equipmentItems!.map((item) => (
+                <Chip key={item} label={item} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24 }} />
+              ))}
+            </Stack>
+          </Box>
+        </>
+      )}
+
+      {/* Difficulties */}
+      {hasDifficulties && (
+        <>
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.5 }}>
+              Difficoltà riscontrate
+            </Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+              {row.difficulties!.map((item) => (
+                <Chip key={item} label={item} size="small" variant="outlined" color="warning" sx={{ fontSize: '0.75rem', height: 24 }} />
+              ))}
+            </Stack>
+          </Box>
+        </>
+      )}
+
+      {/* Notes */}
+      {row.notes && (
+        <>
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Stack direction="row" spacing={0.75} alignItems="center">
+              <Iconify icon="mdi:note-text-outline" width={16} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.4, minWidth: 0 }}>
+                <Typography component="span" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                  Note:
+                </Typography>
+                {' '}
+                <Typography
+                  component="span"
+                  sx={{
+                    fontSize: '0.8rem',
                     whiteSpace: 'pre-wrap',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
+                    display: '-webkit-inline-box',
+                    WebkitLineClamp: 3,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -345,46 +271,16 @@ const ServiceCard = ({ row, cardRef }: ServiceCardProps) => {
                 >
                   {row.notes}
                 </Typography>
-              </Box>
+              </Typography>
             </Stack>
           </Box>
-        }
-        <Grid container spacing={1} sx={{ mb: 1 }}>
-          <Grid item xs={12} sx={{ textAlign: 'center' }}>
-          <Label color="warning" sx={{ height: 20, fontSize: '0.75rem', p: 1 }}>
-              Buon Servizio!!
-            </Label>
-          </Grid>
-        </Grid>
-      </Box>
-      
-      {/* Ultra Compact Footer with Contacts */}
-      <Box sx={{ 
-        py: 0.5,
-        mt: 0.25,
-        borderTop: '1px solid',
-        borderColor: 'divider',
-        textAlign: 'center',
-        px: 1
-      }}>
-        <Stack direction="column" spacing={0.25} alignItems="center" justifyContent="center">
-          <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
-          <Iconify icon="mdi:account-tie" sx={{ width: 10, height: 10, mr: 0.25, verticalAlign: 'text-top' }} />
-          {ASSOCIATION_INFO.president.phone} 
-        </Typography>
-        <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
-          <Iconify icon="mdi:account-supervisor" sx={{ width: 10, height: 10, mr: 0.25, verticalAlign: 'text-top' }} />
-          {ASSOCIATION_INFO.serviceManager.phone}
-        </Typography>
-        <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
-          <Iconify icon="mdi:at" sx={{ width: 10, height: 10, mr: 0.25, verticalAlign: 'text-top' }} />
-            {ASSOCIATION_INFO.email}
-          </Typography>
-        </Stack>
-      </Box>
+        </>
+      )}
     </Paper>
   );
 };
+
+// ----------------------------------------------------------------------
 
 interface ServiceShareDialogProps {
   open: boolean;
@@ -395,222 +291,229 @@ interface ServiceShareDialogProps {
 export default function ServiceShareDialog({ open, onClose, serviceData }: ServiceShareDialogProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Fixed image sharing function
+  // ---- Share / download image ----
   const handleShareAsImage = async () => {
-    if (!cardRef.current) {
-      console.error('Card reference is not available');
-      return;
-    }
-    
+    if (!cardRef.current) return;
     setIsLoading(true);
-    
+
     try {
-      // Dynamically import html2canvas to avoid webpack bundling issues
       const html2canvasModule = await import('html2canvas');
       const html2canvas = html2canvasModule.default;
-      
-      // Create canvas from the service card
+
       const canvas = await html2canvas(cardRef.current, {
-        scale: 3, // Higher scale for better quality with small text
+        scale: 3,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
         logging: false,
         onclone: (doc) => {
-          // Ensure proper styles to the cloned element
-          const clonedElement = doc.querySelector('[data-card-ref="true"]');
-          if (clonedElement instanceof HTMLElement) {
-            // Force the width to ensure consistent size
-            clonedElement.style.width = '500px';
-            clonedElement.style.maxWidth = '500px';
-            clonedElement.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
-            clonedElement.style.borderRadius = '8px';
-            clonedElement.style.backgroundColor = '#ffffff';
-            clonedElement.style.overflow = 'hidden';
-            
-            // Ensure all child elements are visible and styled properly
-            const allElements = clonedElement.querySelectorAll('*');
-            allElements.forEach(el => {
-              if (el instanceof HTMLElement) {
-                el.style.visibility = 'visible';
-                
-                // Ensure light mode for all elements
-                if (el.className && el.className.includes('MuiBox') || 
-                    el.className && el.className.includes('MuiPaper')) {
-                  // Apply light theme background to boxes
-                  if (el.style.backgroundColor === 'rgb(18, 18, 18)' ||
-                      el.style.backgroundColor === '#121212') {
-                    el.style.backgroundColor = '#f5f5f5';
-                  }
-                }
-                
-                // Ensure text is properly visible with enhanced rendering for small fonts
-                if (el.tagName === 'SPAN' || el.tagName === 'P' || el.tagName === 'DIV' || 
-                    el.tagName === 'LABEL' || el.tagName === 'H6' || el.tagName === 'TYPOGRAPHY') {
-                  // Force light mode text colors
-                  if (el.style.color === 'rgb(255, 255, 255)' || 
-                      el.style.color === '#ffffff' ||
-                      el.style.color === 'white') {
-                    el.style.color = '#000000';
-                  } else if (!el.style.color || el.style.color === '') {
-                    el.style.color = '#000000';
-                  }
-                  
-                  el.style.textRendering = 'optimizeLegibility';
-                  // Apply vendor prefixes using setAttribute to avoid TypeScript errors
-                  el.setAttribute('style', `
-                    ${el.getAttribute('style') || ''}
-                    -webkit-font-smoothing: antialiased;
-                    -moz-osx-font-smoothing: grayscale;
-                  `);
+          // Force light-mode CSS custom properties on the cloned document root.
+          // MUI CssVarsProvider (cssVarPrefix: '') uses --palette-* variables.
+          // Without this, dark-mode variables bleed into the captured image.
+          const root = doc.documentElement;
+          root.style.setProperty('--palette-text-primary', 'rgba(0,0,0,0.87)');
+          root.style.setProperty('--palette-text-secondary', 'rgba(0,0,0,0.6)');
+          root.style.setProperty('--palette-text-disabled', 'rgba(0,0,0,0.38)');
+          root.style.setProperty('--palette-background-paper', '#ffffff');
+          root.style.setProperty('--palette-background-default', '#f5f5f5');
+          root.style.setProperty('--palette-background-neutral', '#eeeeee');
+          root.style.setProperty('--palette-divider', 'rgba(0,0,0,0.12)');
+          root.style.setProperty('--palette-action-hover', 'rgba(0,0,0,0.04)');
+          root.style.setProperty('--palette-action-selected', 'rgba(0,0,0,0.08)');
+          root.style.setProperty('--palette-action-active', 'rgba(0,0,0,0.54)');
+
+          // Also remove the theme-transitioning class to avoid !important transitions
+          root.classList.remove('theme-transitioning');
+
+          const el = doc.querySelector('[data-card-ref="true"]');
+          if (el instanceof HTMLElement) {
+            el.style.width = '500px';
+            el.style.maxWidth = '500px';
+            el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+            el.style.borderRadius = '8px';
+            el.style.backgroundColor = '#ffffff';
+            el.style.overflow = 'hidden';
+
+            // Walk all children and bake in computed colors as inline styles
+            // to guarantee html2canvas captures the correct colours
+            el.querySelectorAll('*').forEach(child => {
+              if (child instanceof HTMLElement) {
+                const computed = doc.defaultView?.getComputedStyle(child);
+                if (computed) {
+                  child.style.color = computed.color;
+                  child.style.backgroundColor = computed.backgroundColor;
+                  child.style.borderColor = computed.borderColor;
                 }
               }
             });
           }
         }
       });
-      
-      // Convert canvas to data URL
-      const dataUrl = canvas.toDataURL('image/png');
-      
-      // Download the image
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `servizio-${serviceData.id || 'share'}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+
+      // Try native share on mobile, fallback to download
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png')
+      );
+      const file = new File([blob], `servizio-${serviceData.id || 'share'}.png`, { type: 'image/png' });
+
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        // Fallback: download link
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
       onClose();
-    } catch (error) {
-      console.error('Error creating image:', error);
-      alert('Non è stato possibile creare l\'immagine. Prova a utilizzare WhatsApp.');
+    } catch (error: any) {
+      // AbortError = user cancelled share sheet, not a real error
+      if (error?.name !== 'AbortError') {
+        console.error('Error sharing image:', error);
+        alert('Non è stato possibile condividere l\'immagine.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Share via WhatsApp
+  // ---- Copy text to clipboard ----
+  const handleCopyText = async () => {
+    const text = buildPlainTextSummary(serviceData);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // ---- Share via WhatsApp ----
   const handleShareViaWhatsApp = () => {
     const isSportService = serviceData.visit === 'Sportivo';
-    
-    // Create a formatted message with service details
+
     let message = `*${isSportService ? 'Servizio Sportivo' : 'Servizio Secondario'}*\n\n`;
-    
-    // Common fields
-    message += `Data: ${serviceData.date || serviceData.timestamp || 'Non specificata'}\n`;
-    message += `Stato: ${serviceData.status || 'Non specificato'}\n\n`;
-    
+    message += `Data: ${serviceData.timestamp || serviceData.date || '-'}\n`;
+    message += `Stato: ${serviceData.status || '-'}\n\n`;
+
     if (isSportService) {
-      // Sport Service specific fields
-      message += `*Dettagli Evento*\n`;
-      message += `Nome evento: ${serviceData.eventName || 'Non specificato'}\n`;
-      message += `Inizio: ${serviceData.startTime || 'Non specificato'}\n`;
-      message += `Fine: ${serviceData.endTime || 'Non specificato'}\n`;
-      message += `Arrivo: ${serviceData.arrivalTime || 'Non specificato'}\n`;
-      message += `Partenza: ${serviceData.departureTime || 'Non specificato'}\n\n`;
-      
-      message += `*Organizzatore*\n`;
-      message += `Nome: ${serviceData.organizerName || 'Non specificato'}\n`;
-      message += `Contatto: ${serviceData.organizerContact || 'Non disponibile'}\n\n`;
-      
-      message += `*Attrezzatura*\n`;
-      message += `Mezzo: ${serviceData.vehicle || 'Non specificato'}\n`;
-      
-      if (serviceData.equipmentItems && serviceData.equipmentItems.length > 0) {
-        message += `Attrezzatura: ${serviceData.equipmentItems.join(', ')}\n`;
-      }
+      if (serviceData.eventName) message += `*Evento:* ${serviceData.eventName}\n`;
+      if (serviceData.startTime || serviceData.endTime) message += `*Orari:* ${serviceData.startTime || '?'} - ${serviceData.endTime || '?'}\n`;
+      if (serviceData.organizerName) message += `*Organizzatore:* ${serviceData.organizerName}\n`;
+      if (serviceData.organizerContact) message += `*Contatto:* ${serviceData.organizerContact}\n`;
+      if (serviceData.arrivalTime) message += `*In sede alle:* ${serviceData.arrivalTime}\n`;
+      if (serviceData.departureTime) message += `*Partenza alle:* ${serviceData.departureTime}\n`;
+      if (serviceData.vehicle) message += `*Mezzo:* ${serviceData.vehicle}\n`;
+      if (serviceData.equipmentItems && serviceData.equipmentItems.length > 0) message += `*Attrezzatura:* ${serviceData.equipmentItems.join(', ')}\n`;
     } else {
-      // Secondary Service specific fields
-      message += `*Paziente*\n`;
-      message += `Nome: ${serviceData.name || 'Non specificato'}\n`;
-      message += `Tipo servizio: ${serviceData.visit || 'Non specificato'}\n`;
-      message += `Orario: ${serviceData.time || 'Non specificato'}\n\n`;
-      
-      message += `*Trasporto*\n`;
-      message += `Ritiro: ${serviceData.pickupLocation || 'Non specificato'}`;
-      if (serviceData.pickupTime) message += ` alle ${serviceData.pickupTime}`;
-      message += `\n`;
-      message += `Destinazione: ${serviceData.destinationType || 'Non specificata'}\n\n`;
-      
-      message += `*Dettagli*\n`;
-      message += `Mezzo: ${serviceData.vehicle || 'Non specificato'}\n`;
-      message += `Posizione: ${serviceData.position || 'Non specificata'}\n`;
+      if (serviceData.name) message += `*Paziente:* ${serviceData.name}\n`;
+      if (serviceData.serviceType) message += `*Tipo servizio:* ${mapServiceType(serviceData.serviceType)}\n`;
+      if (serviceData.time) message += `*Orario:* ${serviceData.time}\n`;
+      if (serviceData.pickupLocation) {
+        message += `*Ritiro:* ${serviceData.pickupLocation}`;
+        if (serviceData.pickupTime) message += ` alle ${serviceData.pickupTime}`;
+        message += `\n`;
+      }
+      if (serviceData.destinationType) message += `*Destinazione:* ${serviceData.destinationType}\n`;
+      if (serviceData.vehicle) message += `*Mezzo:* ${serviceData.vehicle}\n`;
+      if (serviceData.position) message += `*Posizione:* ${serviceData.position}\n`;
+      if (serviceData.equipment && serviceData.equipment.length > 0) message += `*Presidi:* ${serviceData.equipment.join(', ')}\n`;
+      if (serviceData.difficulties && serviceData.difficulties.length > 0) message += `*Difficoltà:* ${serviceData.difficulties.join(', ')}\n`;
     }
-    
-    // Notes for both types
-    if (serviceData.notes) {
-      message += `\n*Note*\n${serviceData.notes}\n`;
-    }
-    
-    // Encode the message for a URL
-    const encodedMessage = encodeURIComponent(message);
-    
-    // Create the WhatsApp URL
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    
-    // Open WhatsApp in a new tab
-    window.open(whatsappUrl, '_blank');
-    
+
+    if (serviceData.kilometers) message += `*KM:* ${serviceData.kilometers}\n`;
+    if (serviceData.price) message += `*Prezzo:* ${serviceData.price.toFixed(2)} €\n`;
+    if (serviceData.notes) message += `\n*Note:* ${serviceData.notes}\n`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     onClose();
   };
 
-  // Wrap the entire dialog in the ThemeProvider to isolate it from the app's theme
   return (
     <ThemeProvider theme={lightTheme}>
-      <Dialog 
-        open={open} 
+      <Dialog
+        open={open}
         onClose={onClose}
         maxWidth="sm"
-        fullWidth={false}
+        fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
-            width: 'auto',
-            maxWidth: { xs: '95%', sm: 520, md: 520 },
-            margin: { xs: 1, sm: 'auto' },
-            bgcolor: 'background.paper', // Use theme colors
+            maxWidth: { sm: 540 },
+            bgcolor: 'background.paper',
+            ...(isMobile && { borderRadius: 0 }),
           }
         }}
-        sx={{
-          '& .MuiBackdrop-root': {
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          }
-        }}
+        sx={{ '& .MuiBackdrop-root': { backgroundColor: 'rgba(0,0,0,0.5)' } }}
       >
-        <DialogTitle sx={{ py: 1, fontSize: '0.9rem', color: 'text.primary', bgcolor: 'background.paper' }}>
+        <DialogTitle sx={{ pb: 0.5, color: 'text.primary', bgcolor: 'background.paper', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           Condividi Servizio
+          {isMobile && (
+            <Button onClick={onClose} sx={{ minWidth: 'auto', p: 0.5 }}>
+              <Iconify icon="mdi:close" width={24} />
+            </Button>
+          )}
         </DialogTitle>
-        <DialogContent sx={{ pt: 0, pb: 1, bgcolor: 'background.paper' }}>
-          <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'center' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }} gutterBottom>
-              Anteprima
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <ServiceCard row={serviceData} cardRef={cardRef} />
-          </Box>
+
+        <DialogContent sx={{ pt: 1, pb: 1.5, bgcolor: 'background.paper', display: 'flex', justifyContent: 'center', alignItems: isMobile ? 'flex-start' : 'center' }}>
+          <ServiceCard row={serviceData} cardRef={cardRef} />
         </DialogContent>
-        <DialogActions sx={{ flexDirection: 'column', alignItems: 'stretch', px: 1.5, pb: 1.5, bgcolor: 'background.paper' }}>
-          <Button 
-            variant="contained" 
+
+        <DialogActions sx={{ px: 2, pb: 2, bgcolor: 'background.paper', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, '& > :not(:first-of-type)': { ml: { xs: '0 !important', sm: undefined } } }}>
+          <Button
+            fullWidth
+            variant="contained"
             onClick={handleShareAsImage}
-            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="mdi:image" />}
+            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="mdi:share-variant" />}
             disabled={isLoading}
-            size="small"
-            sx={{ mb: 0.75, fontSize: '0.8rem' }}
+            size="medium"
           >
-            {isLoading ? 'Creazione immagine...' : 'Condividi come immagine'}
+            {isLoading ? 'Creazione...' : 'Immagine'}
           </Button>
-          <Button 
-            variant="outlined" 
+
+          <Tooltip title={copied ? 'Copiato!' : 'Copia testo negli appunti'} arrow>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleCopyText}
+              startIcon={<Iconify icon={copied ? 'mdi:check' : 'mdi:content-copy'} />}
+              disabled={isLoading}
+              size="medium"
+              color={copied ? 'success' : 'inherit'}
+            >
+              {copied ? 'Copiato!' : 'Copia'}
+            </Button>
+          </Tooltip>
+
+          <Button
+            fullWidth
+            variant="outlined"
             onClick={handleShareViaWhatsApp}
             startIcon={<Iconify icon="mdi:whatsapp" />}
             disabled={isLoading}
-            size="small"
-            sx={{ fontSize: '0.8rem' }}
+            size="medium"
+            sx={{ color: '#25D366', borderColor: '#25D366', '&:hover': { borderColor: '#1da851', bgcolor: 'rgba(37, 211, 102, 0.04)' } }}
           >
-            Condividi su WhatsApp
+            WhatsApp
           </Button>
         </DialogActions>
       </Dialog>

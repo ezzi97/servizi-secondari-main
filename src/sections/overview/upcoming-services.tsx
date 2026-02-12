@@ -1,14 +1,16 @@
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import it from 'date-fns/locale/it';
 import { useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
+import { alpha, useTheme } from '@mui/material/styles';
 
 import { useRouter } from 'src/routes/hooks';
 
@@ -58,22 +60,24 @@ function getStatusLabel(status: string): string {
 }
 
 export function UpcomingServices() {
+  const theme = useTheme();
   const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
         const res = await serviceService.getServices({
-          dateFrom: today,
+          dateFrom: todayStr,
           sortBy: 'service_date',
           sortOrder: 'asc',
-          pageSize: '5',
+          pageSize: '10',
         } as any);
 
         if (cancelled) return;
@@ -88,6 +92,7 @@ export function UpcomingServices() {
 
     load();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleViewAll = () => {
@@ -110,13 +115,21 @@ export function UpcomingServices() {
     }
   };
 
+  const isToday = (dateStr: string): boolean => {
+    try {
+      return isSameDay(new Date(dateStr), today);
+    } catch {
+      return false;
+    }
+  };
+
   // Loading skeleton
   if (isLoading) {
     return (
       <Card>
         <CardHeader title="Prossimi servizi" />
         <Stack spacing={0} sx={{ px: 3, pb: 3 }}>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.5 }}>
               <Skeleton variant="circular" width={40} height={40} />
               <Box sx={{ flex: 1 }}>
@@ -165,6 +178,7 @@ export function UpcomingServices() {
             const name = getServiceName(service);
             const typeLabel = getServiceLabel(service);
             const isSport = service.type === 'sport';
+            const isTodayService = dateStr ? isToday(dateStr) : false;
 
             return (
               <Box
@@ -194,8 +208,8 @@ export function UpcomingServices() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: isSport ? 'info.lighter' : 'warning.lighter',
-                    color: isSport ? 'info.darker' : 'warning.darker',
+                    bgcolor: alpha(theme.palette[isSport ? 'info' : 'warning'].main, 0.12),
+                    color: isSport ? 'info.main' : 'warning.main',
                     flexShrink: 0,
                   }}
                 >
@@ -207,15 +221,22 @@ export function UpcomingServices() {
 
                 {/* Name + date */}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    variant="subtitle2"
-                    noWrap
-                  >
+                  <Typography variant="subtitle2" noWrap>
                     {name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {typeLabel} &middot; {dateStr ? formatDate(dateStr) : '—'}
-                  </Typography>
+                  <Stack direction="row" alignItems="center" spacing={0.75}>
+                    <Typography variant="caption" color="text.secondary">
+                      {typeLabel} &middot; {dateStr ? formatDate(dateStr) : '—'}
+                    </Typography>
+                    {isTodayService && (
+                      <Chip
+                        label="Oggi"
+                        size="small"
+                        color="primary"
+                        sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }}
+                      />
+                    )}
+                  </Stack>
                 </Box>
 
                 {/* Status */}

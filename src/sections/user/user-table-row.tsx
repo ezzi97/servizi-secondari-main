@@ -1,13 +1,23 @@
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
-import Avatar from '@mui/material/Avatar';
 import Tooltip from '@mui/material/Tooltip';
+import Dialog from '@mui/material/Dialog';
+import Button from '@mui/material/Button';
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import IconButton from '@mui/material/IconButton';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import { alpha, useTheme } from '@mui/material/styles';
 
 import { useRouter } from 'src/routes/hooks';
+
+import { useToast } from 'src/hooks/use-toast';
+
+import { useServices } from 'src/contexts/service-context';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
@@ -22,11 +32,27 @@ type UserTableRowProps = {
 };
 
 export function UserTableRow({ row }: UserTableRowProps) {
+  const theme = useTheme();
   const router = useRouter();
+  const { deleteService } = useServices();
+  const { success: showSuccess, error: showError } = useToast();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
+  const getRowStatusColor = (status: string): 'default' | 'warning' | 'info' | 'success' | 'error' => {
+    switch (status.toLowerCase()) {
+      case 'bozza': return 'default';
+      case 'in attesa': return 'warning';
+      case 'confermato': return 'info';
+      case 'effettuato': return 'success';
+      case 'cancellato': return 'error';
+      default: return 'default';
+    }
+  };
+
   const renderStatus = (
-    <Label color={(row.status === 'cancellato' && 'error') || 'success'}>
+    <Label color={getRowStatusColor(row.status)}>
       {row.status}
     </Label>
   );
@@ -39,13 +65,35 @@ export function UserTableRow({ row }: UserTableRowProps) {
       router.push(`/servizi/secondari/modifica/${row.id}`);
     }
   };
+
+  // Delete handlers
+  const handleOpenDeleteDialog = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setDeleting(true);
+      await deleteService(row.id);
+      showSuccess('Servizio eliminato con successo');
+      handleCloseDeleteDialog();
+    } catch (err) {
+      console.error(err);
+      showError('Errore durante l\'eliminazione del servizio');
+    } finally {
+      setDeleting(false);
+    }
+  };
   
-  // Open share dialog
+  // Share dialog handlers
   const handleOpenShareDialog = () => {
     setShareDialogOpen(true);
   };
   
-  // Close share dialog
   const handleCloseShareDialog = () => {
     setShareDialogOpen(false);
   };
@@ -69,8 +117,8 @@ export function UserTableRow({ row }: UserTableRowProps) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: row.visit === 'Sportivo' ? 'info.lighter' : 'warning.lighter',
-                    color: row.visit === 'Sportivo' ? 'info.darker' : 'warning.darker',
+                    bgcolor: alpha(theme.palette[row.visit === 'Sportivo' ? 'info' : 'warning'].main, 0.12),
+                    color: row.visit === 'Sportivo' ? 'info.main' : 'warning.main',
                     flexShrink: 0,
                   }}
                 >
@@ -96,8 +144,8 @@ export function UserTableRow({ row }: UserTableRowProps) {
               <IconButton size="small" color="primary" onClick={handleEdit}>
                 <Iconify icon="eva:edit-fill" width={18} />
               </IconButton>
-              <IconButton size="small" color="error">
-                <Iconify icon="solar:archive-down-minimlistic-bold-duotone" width={18} />
+              <IconButton size="small" color="error" onClick={handleOpenDeleteDialog}>
+                <Iconify icon="solar:trash-bin-minimalistic-bold" width={18} />
               </IconButton>
               <IconButton size="small" color="success" onClick={handleOpenShareDialog}>
                 <Iconify icon="solar:share-bold" width={18} />
@@ -124,8 +172,8 @@ export function UserTableRow({ row }: UserTableRowProps) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: row.visit === 'Sportivo' ? 'info.lighter' : 'warning.lighter',
-                    color: row.visit === 'Sportivo' ? 'info.darker' : 'warning.darker',
+                    bgcolor: alpha(theme.palette[row.visit === 'Sportivo' ? 'info' : 'warning'].main, 0.12),
+                    color: row.visit === 'Sportivo' ? 'info.main' : 'warning.main',
                     flexShrink: 0,
                   }}
                 >
@@ -150,8 +198,8 @@ export function UserTableRow({ row }: UserTableRowProps) {
                 <Iconify icon="eva:edit-fill" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Cancella">
-              <IconButton color="error">
+            <Tooltip title="Elimina">
+              <IconButton color="error" onClick={handleOpenDeleteDialog}>
                 <Iconify icon="solar:trash-bin-minimalistic-bold" />
               </IconButton>
             </Tooltip>
@@ -164,12 +212,33 @@ export function UserTableRow({ row }: UserTableRowProps) {
         </TableCell>
       </TableRow>
       
-      {/* Share Dialog - now using the separate component */}
+      {/* Share Dialog */}
       <ServiceShareDialog
         open={shareDialogOpen}
         onClose={handleCloseShareDialog}
         serviceData={row}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+      >
+        <DialogTitle>Conferma eliminazione</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Sei sicuro di voler eliminare il servizio &quot;{row.name}&quot;? Questa azione non può essere annullata.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="inherit" disabled={deleting}>
+            Annulla
+          </Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleting}>
+            {deleting ? 'Eliminazione...' : 'Elimina'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

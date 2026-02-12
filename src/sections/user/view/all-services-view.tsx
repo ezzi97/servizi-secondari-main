@@ -1,6 +1,5 @@
 import { format } from 'date-fns';
 import it from 'date-fns/locale/it';
-import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
@@ -10,9 +9,7 @@ import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Popover from '@mui/material/Popover';
-import Tooltip from '@mui/material/Tooltip';
 import TableBody from '@mui/material/TableBody';
-import IconButton from '@mui/material/IconButton';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -68,6 +65,35 @@ function serviceToRow(service: any): UserProps {
     : '-';
   const dateISO = dateObj ? dateObj.toISOString() : '';
 
+  // Secondary-specific fields
+  const secondaryFields = !isSport ? {
+    serviceType: service.serviceType || '',
+    time: service.arrivalTime || service.departureTime || '',
+    arrivalTime: service.arrivalTime || '',
+    departureTime: service.departureTime || '',
+    pickupLocation: service.pickupAddress || '',
+    pickupTime: service.pickupTime || '',
+    destinationType: service.dropoffAddress || service.dropoffType || '',
+    position: service.position || '',
+    notes: service.additional_notes || '',
+    equipment: service.equipment || [],
+    difficulties: service.difficulties || [],
+    phone: service.phoneNumber || '',
+  } : {};
+
+  // Sport-specific fields
+  const sportFields = isSport ? {
+    eventName: service.eventNameSport || '',
+    startTime: service.startTimeSport || '',
+    endTime: service.endTimeSport || '',
+    arrivalTime: service.arrivalTimeSport || '',
+    departureTime: service.departureTimeSport || '',
+    organizerName: service.organizerNameSport || '',
+    organizerContact: service.organizerContactSport || '',
+    equipmentItems: service.equipmentSport || [],
+    notes: service.notesSport || '',
+  } : {};
+
   return {
     id: service.id,
     name,
@@ -77,6 +103,10 @@ function serviceToRow(service: any): UserProps {
     avatarUrl: '',
     vehicle: isSport ? service.vehicleSport : service.vehicle,
     date: dateISO,
+    kilometers: service.kilometers ?? 0,
+    price: service.price ?? 0,
+    ...secondaryFields,
+    ...sportFields,
   };
 }
 
@@ -158,8 +188,6 @@ export function AllServicesView() {
   const [filterVisit, setFilterVisit] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterVehicle, setFilterVehicle] = useState('');
-  const [filterPriority, setFilterPriority] = useState('');
-  const [filterTimeOfDay, setFilterTimeOfDay] = useState('');
 
   // Convert real services to table rows
   const rows: UserProps[] = services.map(serviceToRow);
@@ -171,8 +199,6 @@ export function AllServicesView() {
     filterVisit,
     filterStatus,
     filterVehicle,
-    filterPriority,
-    filterTimeOfDay,
     filterDateFrom: filterDateFrom ?? null,
     filterDateTo: filterDateTo ?? null
   });
@@ -186,162 +212,16 @@ export function AllServicesView() {
         <Typography variant="h4">
           Servizi
         </Typography>
-
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          {/* Active date filter chip */}
-          {(filterDateFrom || filterDateTo) && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Box
-                sx={{
-                  px: 2,
-                  py: 0.75,
-                  borderRadius: 1.5,
-                  bgcolor: theme.palette.mode === 'dark' ? 'primary.darker' : 'primary.lighter',
-                  color: 'primary.main',
-                  display: 'flex',
-                  alignItems: 'center',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                  {filterDateFrom && filterDateTo ? (
-                    filterDateFrom.getTime() === filterDateTo.getTime()
-                      ? formatDateLabel(filterDateFrom)
-                      : `${formatDateLabel(filterDateFrom)} - ${formatDateLabel(filterDateTo)}`
-                  ) : (
-                    <>
-                      {filterDateFrom && `Da: ${formatDateLabel(filterDateFrom)}`}
-                      {filterDateTo && `A: ${formatDateLabel(filterDateTo)}`}
-                    </>
-                  )}
-                </Typography>
-                <IconButton
-                  size="small"
-                  onClick={handleClearDateFilters}
-                  sx={{ ml: 0.5, p: 0.25 }}
-                  aria-label="Cancella filtri data"
-                >
-                  <Iconify icon="eva:close-fill" width={16} />
-                </IconButton>
-              </Box>
-            </motion.div>
-          )}
-
-          <Tooltip title="Filtra per periodo">
-            <IconButton
-              onClick={handleOpenDateFilter}
-              sx={{
-                position: 'relative',
-                ...(hasActiveDateFilters && {
-                  color: 'primary.main',
-                  bgcolor: 'primary.lighter',
-                }),
-              }}
-            >
-              <Iconify icon="mdi:calendar-filter" />
-              {hasActiveDateFilters && (
-                <Box
-                  component={motion.div}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  sx={{
-                    top: 4,
-                    right: 4,
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    position: 'absolute',
-                    bgcolor: 'error.main',
-                  }}
-                />
-              )}
-            </IconButton>
-          </Tooltip>
-
-          <Popover
-            open={openDateFilter}
-            anchorEl={dateAnchorEl}
-            onClose={handleCloseDateFilter}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            PaperProps={{ sx: { p: 0, width: 300, mt: 1.5, overflow: 'hidden' } }}
-          >
-            <LocalizationProvider
-              dateAdapter={AdapterDateFns}
-              adapterLocale={it}
-              localeText={{
-                okButtonLabel: 'OK',
-                cancelButtonLabel: 'Annulla',
-                todayButtonLabel: 'Oggi',
-                clearButtonLabel: 'Cancella',
-              }}
-            >
-              <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography variant="subtitle1">Filtra per periodo</Typography>
-              </Box>
-
-              <Box sx={{ p: 2, borderBottom: '1px dashed', borderColor: 'divider' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Selezione rapida
-                </Typography>
-                <Stack direction="row" flexWrap="wrap" sx={{ mx: -0.5 }}>
-                  {DATE_PRESETS.map((preset) => (
-                    <Chip
-                      key={preset.label}
-                      label={preset.label}
-                      size="small"
-                      onClick={() => applyDatePreset(preset)}
-                      sx={{ m: 0.5 }}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-
-              <Box sx={{ p: 2 }}>
-                <Stack spacing={2}>
-                  <DatePicker
-                    label="Data da"
-                    value={filterDateFrom}
-                    onChange={setFilterDateFrom}
-                    slotProps={{ textField: { size: 'small', fullWidth: true } }}
-                  />
-                  <DatePicker
-                    label="Data a"
-                    value={filterDateTo}
-                    onChange={setFilterDateTo}
-                    slotProps={{ textField: { size: 'small', fullWidth: true } }}
-                  />
-                </Stack>
-              </Box>
-
-              <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
-                {hasActiveDateFilters && (
-                  <Button variant="outlined" color="inherit" onClick={handleClearDateFilters} size="small">
-                    Cancella
-                  </Button>
-                )}
-                <Button variant="contained" onClick={handleCloseDateFilter} size="small" sx={{ ml: 'auto' }}>
-                  Applica
-                </Button>
-              </Box>
-            </LocalizationProvider>
-          </Popover>
-        </Stack>
       </Stack>
 
       <Card sx={{ position: 'relative', zIndex: 20 }}>
         <UserTableToolbar
+          onOpenDateFilter={handleOpenDateFilter}
+          hasActiveDateFilters={!!hasActiveDateFilters}
           filterName={filterName}
           filterVisit={filterVisit}
           filterStatus={filterStatus}
           filterVehicle={filterVehicle}
-          filterPriority={filterPriority}
-          filterTimeOfDay={filterTimeOfDay}
           onFilterName={(event) => {
             setFilterName(event.target.value);
             table.onResetPage();
@@ -358,15 +238,98 @@ export function AllServicesView() {
             setFilterVehicle(value);
             table.onResetPage();
           }}
-          onFilterPriority={(value) => {
-            setFilterPriority(value);
-            table.onResetPage();
-          }}
-          onFilterTimeOfDay={(value) => {
-            setFilterTimeOfDay(value);
-            table.onResetPage();
-          }}
         />
+
+        {/* Active date filter chip */}
+        {(filterDateFrom || filterDateTo) && (
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2.5, py: 1 }}>
+            <Chip
+              size="small"
+              color="primary"
+              variant="outlined"
+              onDelete={handleClearDateFilters}
+              label={
+                filterDateFrom && filterDateTo
+                  ? filterDateFrom.getTime() === filterDateTo.getTime()
+                    ? formatDateLabel(filterDateFrom)
+                    : `${formatDateLabel(filterDateFrom)} – ${formatDateLabel(filterDateTo)}`
+                  : filterDateFrom
+                    ? `Da: ${formatDateLabel(filterDateFrom)}`
+                    : `A: ${formatDateLabel(filterDateTo!)}`
+              }
+            />
+          </Stack>
+        )}
+
+        {/* Date filter popover */}
+        <Popover
+          open={openDateFilter}
+          anchorEl={dateAnchorEl}
+          onClose={handleCloseDateFilter}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          PaperProps={{ sx: { p: 0, width: 300, mt: 1.5, overflow: 'hidden' } }}
+        >
+          <LocalizationProvider
+            dateAdapter={AdapterDateFns}
+            adapterLocale={it}
+            localeText={{
+              okButtonLabel: 'OK',
+              cancelButtonLabel: 'Annulla',
+              todayButtonLabel: 'Oggi',
+              clearButtonLabel: 'Cancella',
+            }}
+          >
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle1">Filtra per periodo</Typography>
+            </Box>
+
+            <Box sx={{ p: 2, borderBottom: '1px dashed', borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Selezione rapida
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" sx={{ mx: -0.5 }}>
+                {DATE_PRESETS.map((preset) => (
+                  <Chip
+                    key={preset.label}
+                    label={preset.label}
+                    size="small"
+                    onClick={() => applyDatePreset(preset)}
+                    sx={{ m: 0.5 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+
+            <Box sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <DatePicker
+                  label="Data da"
+                  value={filterDateFrom}
+                  onChange={setFilterDateFrom}
+                  slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                />
+                <DatePicker
+                  label="Data a"
+                  value={filterDateTo}
+                  onChange={setFilterDateTo}
+                  slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                />
+              </Stack>
+            </Box>
+
+            <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
+              {hasActiveDateFilters && (
+                <Button variant="outlined" color="inherit" onClick={handleClearDateFilters} size="small">
+                  Cancella
+                </Button>
+              )}
+              <Button variant="contained" onClick={handleCloseDateFilter} size="small" sx={{ ml: 'auto' }}>
+                Applica
+              </Button>
+            </Box>
+          </LocalizationProvider>
+        </Popover>
 
         <Scrollbar>
           <TableContainer 

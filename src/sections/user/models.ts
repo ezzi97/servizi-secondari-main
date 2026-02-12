@@ -27,10 +27,13 @@ export type UserProps = {
     destinationType?: string;
 
     // Service details
+    serviceType?: string;
     position?: string;
     equipment?: string[];
     difficulties?: string[];
     notes?: string;
+    kilometers?: number;
+    price?: number;
 
     // Sport service specific
     eventName?: string;

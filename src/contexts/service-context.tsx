@@ -11,6 +11,7 @@ interface ServiceState {
   stats: ServiceStats | null;
   filters: ServiceFilters;
   isLoading: boolean;
+  statsLoading: boolean;
   error: string | null;
 }
 
@@ -34,6 +35,7 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
     stats: null,
     filters: {},
     isLoading: false,
+    statsLoading: false,
     error: null,
   });
 
@@ -87,14 +89,18 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchStats = useCallback(async (filters?: ServiceFilters) => {
+    setState(prev => ({ ...prev, statsLoading: true }));
     try {
       const response = await serviceService.getStats(filters);
 
       if (response.success && response.data) {
-        setState(prev => ({ ...prev, stats: response.data! }));
+        setState(prev => ({ ...prev, stats: response.data!, statsLoading: false }));
+      } else {
+        setState(prev => ({ ...prev, statsLoading: false }));
       }
     } catch {
       // Stats are non-critical, don't show error
+      setState(prev => ({ ...prev, statsLoading: false }));
     }
   }, []);
 

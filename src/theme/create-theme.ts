@@ -16,12 +16,11 @@ export function createTheme(): Theme {
       ...components,
       MuiCssBaseline: {
         styleOverrides: {
-          '*': {
-            transition: 'background-color 1s ease, border-color 1s ease, color 0s ease',
+          // When theme is switching (class added/removed by ThemeModeProvider),
+          // all elements get a smooth color transition
+          'html.theme-transitioning *, html.theme-transitioning *::before, html.theme-transitioning *::after': {
+            transition: 'background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, fill 0.3s ease-in-out !important',
           },
-          '.MuiTable-root, .MuiTableCell-root, .MuiTableHead-root, .MuiPaper-root, .MuiToolbar-root': {
-            transition: 'background-color 1s ease, border-color 1s ease, color 1s ease !important',
-          }
         },
       },
     },

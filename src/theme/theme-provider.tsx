@@ -2,7 +2,7 @@ import type {} from '@mui/lab/themeAugmentation';
 import type { PaletteMode } from '@mui/material';
 import type {} from '@mui/material/themeCssVarsAugmentation';
 
-import { useMemo, useContext, createContext } from 'react';
+import { useMemo, useCallback, useContext, createContext } from 'react';
 
 import CssBaseline from '@mui/material/CssBaseline';
 import { useColorScheme, Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';
@@ -26,17 +26,30 @@ type Props = {
   children: React.ReactNode;
 };
 
+const TRANSITION_DURATION = 350; // ms — matches the CSS transition in create-theme.ts
+
 function ThemeModeProvider({ children }: { children: React.ReactNode }) {
   const { mode = 'light', setMode } = useColorScheme();
-  
+
+  const toggleThemeMode = useCallback(() => {
+    // 1. Add class so the global CSS rule kicks in with !important
+    document.documentElement.classList.add('theme-transitioning');
+
+    // 2. Actually switch mode
+    setMode(mode === 'light' ? 'dark' : 'light');
+
+    // 3. Remove class after the transition finishes
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-transitioning');
+    }, TRANSITION_DURATION);
+  }, [mode, setMode]);
+
   const themeMode = useMemo(
     () => ({
-      toggleThemeMode: () => {
-        setMode(mode === 'light' ? 'dark' : 'light');
-      },
-      mode: mode === 'system' ? 'light' : mode,
+      toggleThemeMode,
+      mode: (mode === 'system' ? 'light' : mode) as 'light' | 'dark',
     }),
-    [mode, setMode]
+    [toggleThemeMode, mode]
   );
 
   return (

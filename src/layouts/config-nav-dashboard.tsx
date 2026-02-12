@@ -13,8 +13,13 @@ export const navData = [
     icon: icon('ic-analytics'),
   },
   {
+    title: 'Analisi',
+    path: '/analisi',
+    icon: icon('ic-blog'),
+  },
+  {
     title: 'Servizi',
     path: '/tutti-servizi',
     icon: icon('ic-user'),
-  }
+  },
 ];

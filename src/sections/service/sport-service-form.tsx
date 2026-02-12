@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { LoadingButton } from '@mui/lab';
-import { Box, Grid, Card, Stack, Alert, Button, MenuItem, Checkbox, Typography, useMediaQuery, FormControlLabel } from '@mui/material';
+import { Box, Grid, Card, Chip, Stack, Alert, Button, MenuItem, Checkbox, Typography, useMediaQuery, FormControlLabel } from '@mui/material';
 
 import { useRouter } from 'src/routes/hooks';
 
@@ -114,11 +114,20 @@ interface SportServiceFormProps {
   isEditMode?: boolean;
 }
 
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Bozza', color: 'default' as const },
+  { value: 'pending', label: 'In attesa', color: 'warning' as const },
+  { value: 'confirmed', label: 'Confermato', color: 'info' as const },
+  { value: 'completed', label: 'Completato', color: 'success' as const },
+  { value: 'cancelled', label: 'Cancellato', color: 'error' as const },
+];
+
 export default function SportServiceForm({ isSubmitting, isEditMode = false }: SportServiceFormProps) {
   const methods = useFormContext();
   const router = useRouter();
   
-  const [activeStep, setActiveStep] = useState(0);
+  // Start at summary (last step) in edit mode, step 0 in create mode
+  const [activeStep, setActiveStep] = useState(isEditMode ? SPORT_STEPS.length - 1 : 0);
   const isLastStep = activeStep === SPORT_STEPS.length - 1;
 
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -276,7 +285,7 @@ export default function SportServiceForm({ isSubmitting, isEditMode = false }: S
                     type="date"
                     InputLabelProps={{ shrink: true }}
                     inputProps={{
-                      min: new Date().toISOString().split('T')[0],
+                      ...(isEditMode ? {} : { min: new Date().toISOString().split('T')[0] }),
                     }}
                     InputProps={{
                       startAdornment: <Iconify icon={ICONS.event.date} sx={{ color: 'text.disabled', mr: 1 }} />,
@@ -979,7 +988,26 @@ export default function SportServiceForm({ isSubmitting, isEditMode = false }: S
 
   return (
     <>
-      <ServiceStepper activeStep={activeStep} steps={SPORT_STEPS as any} />
+      {isEditMode && (
+        <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+          {STATUS_OPTIONS.map((opt) => (
+            <Chip
+              key={opt.value}
+              label={opt.label}
+              color={opt.color}
+              variant={methods.watch('status') === opt.value ? 'filled' : 'outlined'}
+              onClick={() => methods.setValue('status', opt.value, { shouldDirty: true })}
+              sx={{ fontWeight: methods.watch('status') === opt.value ? 700 : 400 }}
+            />
+          ))}
+        </Stack>
+      )}
+
+      <ServiceStepper
+        activeStep={activeStep}
+        steps={SPORT_STEPS as any}
+        onStepClick={isEditMode ? (step) => setActiveStep(step) : undefined}
+      />
       <Card sx={{ p: 4, mt: 3 }}>
         {renderStepContent(activeStep)}
       </Card>

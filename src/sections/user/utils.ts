@@ -52,8 +52,6 @@ export function applyFilter({
   filterStatus,
   filterVisit,
   filterVehicle,
-  filterPriority,
-  filterTimeOfDay,
   filterDateFrom,
   filterDateTo,
 }: {
@@ -63,8 +61,6 @@ export function applyFilter({
   filterStatus: string;
   filterVisit: string;
   filterVehicle: string;
-  filterPriority: string;
-  filterTimeOfDay: string;
   filterDateFrom: Date | null;
   filterDateTo: Date | null;
 }) {
@@ -85,7 +81,9 @@ export function applyFilter({
   }
 
   if (filterStatus) {
-    inputData = inputData.filter((user) => user.status === filterStatus);
+    inputData = inputData.filter(
+      (user) => user.status.toLowerCase() === filterStatus.toLowerCase()
+    );
   }
 
   if (filterVisit) {
@@ -94,21 +92,6 @@ export function applyFilter({
 
   if (filterVehicle) {
     inputData = inputData.filter((user) => user.vehicle === filterVehicle);
-  }
-
-  if (filterPriority) {
-    inputData = inputData.filter((user) => user.priority === filterPriority);
-  }
-
-  if (filterTimeOfDay) {
-    // Assuming time is in format "HH:MM"
-    inputData = inputData.filter((user) => {
-      const hour = parseInt(user.time?.split(':')[0] || '0', 10);
-      if (filterTimeOfDay === 'Mattina') return hour >= 6 && hour < 12;
-      if (filterTimeOfDay === 'Pomeriggio') return hour >= 12 && hour < 18;
-      if (filterTimeOfDay === 'Sera') return hour >= 18 || hour < 6;
-      return true;
-    });
   }
 
   if (filterDateFrom) {
