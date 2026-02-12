@@ -1,7 +1,7 @@
-const { handleCors } = require('../utils/cors');
-const { getAuthUser } = require('../utils/auth');
-const { getSupabaseAdmin } = require('../utils/supabase');
-const { mapServiceRow, mapChildToDb, childTable } = require('../utils/service-mapper');
+const { handleCors } = require('../_utils/cors');
+const { getAuthUser } = require('../_utils/auth');
+const { getSupabaseAdmin } = require('../_utils/supabase');
+const { mapServiceRow, mapChildToDb, childTable } = require('../_utils/service-mapper');
 
 function extractPrice(type: string, data: Record<string, any>): number {
   return type === 'sport' ? (data.priceSport ?? 0) : (data.price ?? 0);

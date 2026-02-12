@@ -1,5 +1,5 @@
-const { handleCors } = require('../utils/cors');
-const { getAuthUser } = require('../utils/auth');
+const { handleCors } = require('../_utils/cors');
+const { getAuthUser } = require('../_utils/auth');
 
 module.exports = async function handler(req: any, res: any) {
   if (handleCors(req, res)) return;

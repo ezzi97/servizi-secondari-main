@@ -1,5 +1,5 @@
-const { handleCors } = require('../utils/cors');
-const { getSupabaseAdmin } = require('../utils/supabase');
+const { handleCors } = require('../_utils/cors');
+const { getSupabaseAdmin } = require('../_utils/supabase');
 
 module.exports = async function handler(req: any, res: any) {
   if (handleCors(req, res)) return;
