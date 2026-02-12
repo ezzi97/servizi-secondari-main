@@ -2,6 +2,7 @@ import 'src/index.css';
 
 import { Suspense } from 'react';
 
+import { Analytics } from '@vercel/analytics/react';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
@@ -29,6 +30,7 @@ export default function App() {
                 <Suspense fallback={<div>Caricamento...</div>}>
                   <Router />
                 </Suspense>
+                <Analytics />
               </UIProvider>
             </ServiceProvider>
           </AuthProvider>
