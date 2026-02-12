@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-
 import type { Service } from 'src/types';
+
+import { useMemo, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -32,14 +32,88 @@ function getPrice(service: Service): number {
   return service.priceSport ?? 0;
 }
 
-export function KmRevenueChart() {
+function buildLastSixMonthsKeys() {
+  const now = new Date();
+  const months: string[] = [];
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return months;
+}
+
+function getMonthLabel(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split('-');
+  const monthIndex = parseInt(monthStr, 10) - 1;
+  const year = parseInt(yearStr, 10);
+  const now = new Date();
+  return year === now.getFullYear()
+    ? MONTH_LABELS_IT[monthIndex]
+    : `${MONTH_LABELS_IT[monthIndex]} ${String(year).slice(2)}`;
+}
+
+function buildChartData(sourceServices: Service[], fixedLastSixMonths: boolean) {
+  const monthKeys = fixedLastSixMonths
+    ? buildLastSixMonthsKeys()
+    : Array.from(
+      new Set(
+        sourceServices
+          .map((s) => getServiceDate(s))
+          .filter(Boolean)
+          .map((dateStr) => {
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          })
+      )
+    ).sort();
+
+  const km: Record<string, number> = {};
+  const revenue: Record<string, number> = {};
+  monthKeys.forEach((key) => {
+    km[key] = 0;
+    revenue[key] = 0;
+  });
+
+  sourceServices.forEach((s: Service) => {
+    const dateStr = getServiceDate(s);
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (km[key] !== undefined) {
+      km[key] += getKilometers(s);
+      revenue[key] += getPrice(s);
+    }
+  });
+
+  return {
+    categories: monthKeys.map((key) => getMonthLabel(key)),
+    kmData: monthKeys.map((key) => Math.round(km[key] * 10) / 10),
+    revenueData: monthKeys.map((key) => Math.round(revenue[key] * 100) / 100),
+  };
+}
+
+type KmRevenueChartProps = {
+  services?: Service[];
+  loading?: boolean;
+  monthKeys?: string[];
+};
+
+export function KmRevenueChart({ services, loading = false, monthKeys }: KmRevenueChartProps) {
   const theme = useTheme();
-  const [isLoading, setIsLoading] = useState(true);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [kmData, setKmData] = useState<number[]>([]);
-  const [revenueData, setRevenueData] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(loading || services === undefined);
+  const [fetchedServices, setFetchedServices] = useState<Service[]>([]);
 
   useEffect(() => {
+    if (loading) {
+      setIsLoading(true);
+      return () => {};
+    }
+
+    if (services) {
+      setIsLoading(false);
+      return () => {};
+    }
+
     let cancelled = false;
 
     async function load() {
@@ -58,22 +132,31 @@ export function KmRevenueChart() {
 
         if (cancelled) return;
 
-        const services = res.success ? (res.data?.items ?? []) : [];
+        const loadedServices = res.success ? (res.data?.items ?? []) : [];
+        setFetchedServices(loadedServices);
+      } catch {
+        // Non-critical widget
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
 
-        // Build 6-month buckets
-        const now = new Date();
-        const months: { key: string; label: string }[] = [];
-        for (let i = 5; i >= 0; i -= 1) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-          months.push({ key, label: MONTH_LABELS_IT[d.getMonth()] });
-        }
+    load();
+    return () => { cancelled = true; };
+  }, [loading, services]);
 
+  const sourceServices = services ?? fetchedServices;
+  const { categories, kmData, revenueData } = useMemo(
+    () => {
+      if (monthKeys && monthKeys.length > 0) {
         const km: Record<string, number> = {};
         const revenue: Record<string, number> = {};
-        months.forEach((m) => { km[m.key] = 0; revenue[m.key] = 0; });
+        monthKeys.forEach((key) => {
+          km[key] = 0;
+          revenue[key] = 0;
+        });
 
-        services.forEach((s: Service) => {
+        sourceServices.forEach((s: Service) => {
           const dateStr = getServiceDate(s);
           if (!dateStr) return;
           const d = new Date(dateStr);
@@ -84,19 +167,17 @@ export function KmRevenueChart() {
           }
         });
 
-        setCategories(months.map((m) => m.label));
-        setKmData(months.map((m) => Math.round(km[m.key] * 10) / 10));
-        setRevenueData(months.map((m) => Math.round(revenue[m.key] * 100) / 100));
-      } catch {
-        // Non-critical widget
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        return {
+          categories: monthKeys.map((key) => getMonthLabel(key)),
+          kmData: monthKeys.map((key) => Math.round(km[key] * 10) / 10),
+          revenueData: monthKeys.map((key) => Math.round(revenue[key] * 100) / 100),
+        };
       }
-    }
 
-    load();
-    return () => { cancelled = true; };
-  }, []);
+      return buildChartData(sourceServices, services === undefined);
+    },
+    [monthKeys, sourceServices, services]
+  );
 
   const chartColors = [theme.palette.info.main, theme.palette.success.main];
 
@@ -146,7 +227,7 @@ export function KmRevenueChart() {
 
   return (
     <Card>
-      <CardHeader title="Andamento KM e Ricavi" subheader="Ultimi 6 mesi" />
+      <CardHeader title="Andamento KM e Ricavi" />
 
       {!hasData ? (
         <Box sx={{ px: 3, pb: 4, pt: 2, textAlign: 'center' }}>

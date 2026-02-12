@@ -69,13 +69,14 @@ module.exports = async function handler(req: any, res: any) {
     const body = req.body || {};
     const {
       type: _type, userId: _userId, id: _id,
-      createdAt: _ca, updatedAt: _ua,
+      createdAt: _ca, updatedAt: _ua, archivedAt,
       status: newStatus, ...formData
     } = body;
 
     // 1. Update parent fields if needed
     const parentUpdate: Record<string, any> = {};
     if (newStatus) parentUpdate.status = newStatus;
+    if (archivedAt !== undefined) parentUpdate.archived_at = archivedAt;
 
     const km = extractKilometers(existing.type, formData);
     const price = extractPrice(existing.type, formData);

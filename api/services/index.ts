@@ -28,7 +28,7 @@ module.exports = async function handler(req: any, res: any) {
   // ---- GET: list services with nested child data ----
   if (req.method === 'GET') {
     const {
-      type, status, dateFrom, dateTo, search,
+      type, status, archived, dateFrom, dateTo, search,
       page = '1', pageSize = '20',
       sortBy = 'service_date', sortOrder = 'desc',
     } = req.query;
@@ -49,6 +49,8 @@ module.exports = async function handler(req: any, res: any) {
 
     if (type) query = query.eq('type', type);
     if (status) query = query.eq('status', status);
+    if (archived === 'true') query = query.not('archived_at', 'is', null);
+    if (archived === 'false') query = query.is('archived_at', null);
     if (dateFrom) query = query.gte('service_date', dateFrom);
     if (dateTo) query = query.lte('service_date', dateTo);
 

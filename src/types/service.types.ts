@@ -4,6 +4,7 @@ export interface BaseService {
   type: 'sport' | 'secondary';
   userId: string;
   status: 'draft' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,6 +65,7 @@ export type Service = SportService | SecondaryService;
 export interface ServiceFilters {
   type?: 'sport' | 'secondary';
   status?: string;
+  archived?: boolean;
   dateFrom?: string;
   dateTo?: string;
   search?: string;

@@ -15,9 +15,9 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import TableContainer from '@mui/material/TableContainer';
 import TablePagination from '@mui/material/TablePagination';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import CircularProgress from '@mui/material/CircularProgress';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
 import { useServices } from 'src/contexts/service-context';
@@ -100,6 +100,8 @@ function serviceToRow(service: any): UserProps {
     visit,
     timestamp,
     status: mapStatus(service.status),
+    statusCode: service.status,
+    archivedAt: service.archivedAt ?? null,
     avatarUrl: '',
     vehicle: isSport ? service.vehicleSport : service.vehicle,
     date: dateISO,
@@ -147,7 +149,11 @@ const DATE_PRESETS = [
   },
 ];
 
-export function AllServicesView() {
+interface AllServicesViewProps {
+  mode?: 'active' | 'archived';
+}
+
+export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
   const table = useTable();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -180,9 +186,9 @@ export function AllServicesView() {
 
   // Fetch services on mount
   useEffect(() => {
-    fetchServices();
+    fetchServices({ archived: mode === 'archived' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mode]);
 
   const [filterName, setFilterName] = useState('');
   const [filterVisit, setFilterVisit] = useState('');
@@ -191,9 +197,13 @@ export function AllServicesView() {
 
   // Convert real services to table rows
   const rows: UserProps[] = services.map(serviceToRow);
+  const modeFilteredRows = rows.filter((row) => {
+    const isArchived = !!row.archivedAt;
+    return mode === 'archived' ? isArchived : !isArchived;
+  });
 
   const dataFiltered: UserProps[] = applyFilter({
-    inputData: rows,
+    inputData: modeFilteredRows,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
     filterVisit,
@@ -204,13 +214,69 @@ export function AllServicesView() {
   });
 
   const notFound = !dataFiltered.length && !!filterName;
-  const isEmpty = !isLoading && services.length === 0;
+  const isEmpty = !isLoading && modeFilteredRows.length === 0;
+
+  const escapeCsvValue = (value: unknown): string => {
+    if (value === null || value === undefined) return '';
+    const raw = Array.isArray(value) ? value.join(', ') : String(value);
+    const escaped = raw.replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
+
+  const handleExportCsv = () => {
+    const headers = [
+      'Nome',
+      'Tipo',
+      'Data',
+      'Stato',
+      'Archiviato il',
+      'Mezzo',
+      'In sede alle',
+      'Partenza alle',
+      'Ritiro',
+      'Destinazione',
+      'Evento',
+      'Organizzatore',
+      'KM',
+      'Prezzo',
+      'Note',
+    ];
+
+    const lines = dataFiltered.map((row) => [
+      row.name,
+      row.visit,
+      row.timestamp,
+      row.status,
+      row.archivedAt ? format(new Date(row.archivedAt), 'dd/MM/yyyy HH:mm') : '',
+      row.vehicle ?? '',
+      row.arrivalTime ?? '',
+      row.departureTime ?? '',
+      row.pickupLocation ?? '',
+      row.destinationType ?? '',
+      row.eventName ?? '',
+      row.organizerName ?? '',
+      row.kilometers ?? '',
+      row.price ?? '',
+      row.notes ?? '',
+    ].map(escapeCsvValue).join(','));
+
+    const csvContent = [headers.map(escapeCsvValue).join(','), ...lines].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${mode === 'archived' ? 'servizi-archiviati' : 'servizi'}-${format(new Date(), 'yyyyMMdd-HHmm')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  };
 
   return (
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" sx={{ mb: 3 }}>
         <Typography variant="h4">
-          Servizi
+          {mode === 'archived' ? 'Servizi archiviati' : 'Servizi'}
         </Typography>
       </Stack>
 
@@ -238,6 +304,8 @@ export function AllServicesView() {
             setFilterVehicle(value);
             table.onResetPage();
           }}
+          onExportCsv={handleExportCsv}
+          canExportCsv={dataFiltered.length > 0}
         />
 
         {/* Active date filter chip */}
@@ -387,6 +455,7 @@ export function AllServicesView() {
                         <UserTableRow
                           key={row.id}
                           row={row}
+                          canArchive={mode !== 'archived'}
                         />
                       ))}
 
@@ -401,10 +470,12 @@ export function AllServicesView() {
                           <Box sx={{ py: 10, textAlign: 'center' }}>
                             <Iconify icon="solar:document-add-bold-duotone" width={64} sx={{ mb: 2, color: 'text.disabled' }} />
                             <Typography variant="h6" sx={{ mb: 1 }}>
-                              Nessun servizio
+                              {mode === 'archived' ? 'Nessun servizio archiviato' : 'Nessun servizio'}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              Inizia creando il tuo primo servizio con il pulsante + in basso a destra.
+                              {mode === 'archived'
+                                ? 'I servizi archiviati appariranno qui.'
+                                : 'Inizia creando il tuo primo servizio con il pulsante + in basso a destra.'}
                             </Typography>
                           </Box>
                         </td>

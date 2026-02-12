@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS public.services (
   type TEXT NOT NULL CHECK (type IN ('sport', 'secondary')),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'confirmed', 'completed', 'cancelled')),
+  archived_at TIMESTAMPTZ,
   service_date DATE,
   kilometers NUMERIC(10, 2) DEFAULT 0,
   price NUMERIC(10, 2) DEFAULT 0,
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.services (
 
 -- Add service_date if table already exists (idempotent)
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS service_date DATE;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 -- Drop the old JSONB data column if it exists (from previous schema)
 ALTER TABLE public.services DROP COLUMN IF EXISTS data;
@@ -139,6 +141,7 @@ CREATE TABLE IF NOT EXISTS public.event_services (
 CREATE INDEX IF NOT EXISTS idx_services_user_id ON public.services(user_id);
 CREATE INDEX IF NOT EXISTS idx_services_type ON public.services(type);
 CREATE INDEX IF NOT EXISTS idx_services_status ON public.services(status);
+CREATE INDEX IF NOT EXISTS idx_services_archived_at ON public.services(archived_at);
 CREATE INDEX IF NOT EXISTS idx_services_created_at ON public.services(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_services_service_date ON public.services(service_date);
 

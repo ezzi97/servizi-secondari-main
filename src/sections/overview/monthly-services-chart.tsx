@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-
 import type { Service } from 'src/types';
+
+import { useMemo, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -22,14 +22,89 @@ function getServiceDate(service: Service): string {
   return service.eventDateSport ?? '';
 }
 
-export function MonthlyServicesChart() {
+function buildLastSixMonthsKeys() {
+  const now = new Date();
+  const months: string[] = [];
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return months;
+}
+
+function getMonthLabel(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split('-');
+  const monthIndex = parseInt(monthStr, 10) - 1;
+  const year = parseInt(yearStr, 10);
+  const now = new Date();
+  return year === now.getFullYear()
+    ? MONTH_LABELS_IT[monthIndex]
+    : `${MONTH_LABELS_IT[monthIndex]} ${String(year).slice(2)}`;
+}
+
+function buildChartData(sourceServices: Service[], fixedLastSixMonths: boolean) {
+  const monthKeys = fixedLastSixMonths
+    ? buildLastSixMonthsKeys()
+    : Array.from(
+      new Set(
+        sourceServices
+          .map((s) => getServiceDate(s))
+          .filter(Boolean)
+          .map((dateStr) => {
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          })
+      )
+    ).sort();
+
+  const transport: Record<string, number> = {};
+  const sport: Record<string, number> = {};
+  monthKeys.forEach((key) => {
+    transport[key] = 0;
+    sport[key] = 0;
+  });
+
+  sourceServices.forEach((s: Service) => {
+    const dateStr = getServiceDate(s);
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (s.type === 'secondary' && transport[key] !== undefined) {
+      transport[key] += 1;
+    } else if (s.type === 'sport' && sport[key] !== undefined) {
+      sport[key] += 1;
+    }
+  });
+
+  return {
+    categories: monthKeys.map((key) => getMonthLabel(key)),
+    transportData: monthKeys.map((key) => transport[key]),
+    sportData: monthKeys.map((key) => sport[key]),
+  };
+}
+
+type MonthlyServicesChartProps = {
+  services?: Service[];
+  loading?: boolean;
+  monthKeys?: string[];
+};
+
+export function MonthlyServicesChart({ services, loading = false, monthKeys }: MonthlyServicesChartProps) {
   const theme = useTheme();
-  const [isLoading, setIsLoading] = useState(true);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [transportData, setTransportData] = useState<number[]>([]);
-  const [sportData, setSportData] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(loading || services === undefined);
+  const [fetchedServices, setFetchedServices] = useState<Service[]>([]);
 
   useEffect(() => {
+    if (loading) {
+      setIsLoading(true);
+      return () => {};
+    }
+
+    if (services) {
+      setIsLoading(false);
+      return () => {};
+    }
+
     let cancelled = false;
 
     async function load() {
@@ -48,22 +123,31 @@ export function MonthlyServicesChart() {
 
         if (cancelled) return;
 
-        const services = res.success ? (res.data?.items ?? []) : [];
+        const loadedServices = res.success ? (res.data?.items ?? []) : [];
+        setFetchedServices(loadedServices);
+      } catch {
+        // Non-critical widget
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
 
-        // Build 6-month buckets
-        const now = new Date();
-        const months: { key: string; label: string }[] = [];
-        for (let i = 5; i >= 0; i -= 1) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-          months.push({ key, label: MONTH_LABELS_IT[d.getMonth()] });
-        }
+    load();
+    return () => { cancelled = true; };
+  }, [loading, services]);
 
+  const sourceServices = services ?? fetchedServices;
+  const { categories, transportData, sportData } = useMemo(
+    () => {
+      if (monthKeys && monthKeys.length > 0) {
         const transport: Record<string, number> = {};
         const sport: Record<string, number> = {};
-        months.forEach((m) => { transport[m.key] = 0; sport[m.key] = 0; });
+        monthKeys.forEach((key) => {
+          transport[key] = 0;
+          sport[key] = 0;
+        });
 
-        services.forEach((s: Service) => {
+        sourceServices.forEach((s: Service) => {
           const dateStr = getServiceDate(s);
           if (!dateStr) return;
           const d = new Date(dateStr);
@@ -75,40 +159,36 @@ export function MonthlyServicesChart() {
           }
         });
 
-        setCategories(months.map((m) => m.label));
-        setTransportData(months.map((m) => transport[m.key]));
-        setSportData(months.map((m) => sport[m.key]));
-      } catch {
-        // Non-critical widget
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        return {
+          categories: monthKeys.map((key) => getMonthLabel(key)),
+          transportData: monthKeys.map((key) => transport[key]),
+          sportData: monthKeys.map((key) => sport[key]),
+        };
       }
-    }
 
-    load();
-    return () => { cancelled = true; };
-  }, []);
+      return buildChartData(sourceServices, services === undefined);
+    },
+    [monthKeys, sourceServices, services]
+  );
 
   const chartColors = [theme.palette.primary.main, theme.palette.warning.main];
 
   const chartOptions = useChart({
     colors: chartColors,
-    stroke: { width: 0 },
+    stroke: { width: [3, 3], curve: 'smooth' },
     xaxis: { categories },
     yaxis: {
       stepSize: 1,
     },
     tooltip: {
+      shared: true,
+      intersect: false,
       y: {
         formatter: (value: number) => `${value} servizi`,
       },
     },
-    plotOptions: {
-      bar: {
-        columnWidth: '36%',
-        borderRadius: 6,
-      },
-    },
+    markers: { size: 4 },
+    grid: { padding: { left: 8, right: 8 } },
   });
 
   if (isLoading) {
@@ -144,7 +224,7 @@ export function MonthlyServicesChart() {
 
           <Box sx={{ px: 1 }}>
             <Chart
-              type="bar"
+              type="line"
               series={[
                 { name: 'Trasporto', data: transportData },
                 { name: 'Sportivo', data: sportData },

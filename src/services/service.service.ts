@@ -38,10 +38,6 @@ export const serviceService = {
     return apiClient.put(ENDPOINTS.DETAIL(id), data);
   },
 
-  async deleteService(id: string): Promise<ApiResponse<void>> {
-    return apiClient.delete(ENDPOINTS.DETAIL(id));
-  },
-
   async getStats(filters?: ServiceFilters): Promise<ApiResponse<ServiceStats>> {
     const params = new URLSearchParams();
     

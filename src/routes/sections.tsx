@@ -26,6 +26,7 @@ export const NewServicePage = lazy(() => import('src/pages/new-service'));
 export const SecondaryServicePage = lazy(() => import('src/pages/servizi/secondari/nuovo'));
 export const SportServicePage = lazy(() => import('src/pages/servizi/sportivi/nuovo'));
 export const AllServicesPage = lazy(() => import('src/pages/services'));
+export const ArchivedServicesPage = lazy(() => import('src/pages/archived-services'));
 export const AnalyticsPage = lazy(() => import('src/pages/analytics'));
 
 // ----------------------------------------------------------------------
@@ -64,6 +65,7 @@ export function Router() {
           { element: <SportServicePage />, path: 'sportivi/nuovo' },
         ] },
         { path: 'tutti-servizi', element: <AllServicesPage /> },
+        { path: 'servizi-archiviati', element: <ArchivedServicesPage /> },
         { path: 'analisi', element: <AnalyticsPage /> },
         {
           path: 'servizi/secondari/modifica/:id',

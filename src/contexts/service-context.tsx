@@ -21,7 +21,6 @@ interface ServiceContextValue extends ServiceState {
   fetchStats: (filters?: ServiceFilters) => Promise<void>;
   createService: (data: Partial<Service>) => Promise<Service>;
   updateService: (id: string, data: Partial<Service>) => Promise<Service>;
-  deleteService: (id: string) => Promise<void>;
   setFilters: (filters: ServiceFilters) => void;
   clearCurrentService: () => void;
 }
@@ -134,7 +133,7 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateService = useCallback(async (id: string, data: Partial<Service>): Promise<Service> => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    setState(prev => ({ ...prev, error: null }));
 
     try {
       const response = await serviceService.updateService(id, data);
@@ -149,7 +148,6 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
         ...prev,
         services: prev.services.map(s => s.id === id ? updatedService : s),
         currentService: prev.currentService?.id === id ? updatedService : prev.currentService,
-        isLoading: false,
       }));
 
       return updatedService;
@@ -157,33 +155,6 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
       setState(prev => ({
         ...prev,
         error: err instanceof Error ? err.message : 'Errore nell\'aggiornamento del servizio',
-        isLoading: false,
-      }));
-      throw err;
-    }
-  }, []);
-
-  const deleteService = useCallback(async (id: string) => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const response = await serviceService.deleteService(id);
-
-      if (!response.success) {
-        throw new Error(response.message || 'Errore nell\'eliminazione del servizio');
-      }
-
-      setState(prev => ({
-        ...prev,
-        services: prev.services.filter(s => s.id !== id),
-        currentService: prev.currentService?.id === id ? null : prev.currentService,
-        isLoading: false,
-      }));
-    } catch (err) {
-      setState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Errore nell\'eliminazione del servizio',
-        isLoading: false,
       }));
       throw err;
     }
@@ -204,10 +175,9 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
     fetchStats,
     createService,
     updateService,
-    deleteService,
     setFilters,
     clearCurrentService,
-  }), [state, fetchServices, fetchService, fetchStats, createService, updateService, deleteService, setFilters, clearCurrentService]);
+  }), [state, fetchServices, fetchService, fetchStats, createService, updateService, setFilters, clearCurrentService]);
 
   return (
     <ServiceContext.Provider value={value}>

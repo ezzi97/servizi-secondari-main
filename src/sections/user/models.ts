@@ -4,6 +4,8 @@ export type UserProps = {
     visit: string;
     timestamp: string;
     status: string;
+    statusCode?: 'draft' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+    archivedAt?: string | null;
     avatarUrl: string;
 
     // Basic information

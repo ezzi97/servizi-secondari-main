@@ -53,6 +53,7 @@ function mapServiceRow(row: any) {
     type: row.type,
     userId: row.user_id,
     status: row.status,
+    archivedAt: row.archived_at ?? null,
     kilometers: row.kilometers ?? 0,
     price: row.price ?? 0,
     createdAt: row.created_at,

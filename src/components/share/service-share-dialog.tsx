@@ -533,20 +533,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
             {isLoading ? 'Creazione...' : 'Immagine'}
           </Button>
 
-          <Tooltip title={copied ? 'Copiato!' : 'Copia testo negli appunti'} arrow>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleCopyText}
-              startIcon={<Iconify icon={copied ? 'mdi:check' : 'mdi:content-copy'} />}
-              disabled={isLoading}
-              size="medium"
-              color={copied ? 'success' : 'inherit'}
-            >
-              {copied ? 'Copiato!' : 'Copia'}
-            </Button>
-          </Tooltip>
-
           <Button
             fullWidth
             variant="outlined"

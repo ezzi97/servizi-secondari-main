@@ -50,6 +50,8 @@ type Props = {
   onFilterVehicle: (value: string) => void;
   onOpenDateFilter?: (event: React.MouseEvent<HTMLElement>) => void;
   hasActiveDateFilters?: boolean;
+  onExportCsv?: () => void;
+  canExportCsv?: boolean;
 };
 
 // Create a dark mode wrapper for the entire desktop filters section
@@ -126,6 +128,8 @@ export function UserTableToolbar({
   onFilterVehicle,
   onOpenDateFilter,
   hasActiveDateFilters,
+  onExportCsv,
+  canExportCsv = true,
 }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -276,6 +280,23 @@ export function UserTableToolbar({
                   >
                     <Iconify icon="eva:trash-2-outline" />
                   </IconButton>
+                </Tooltip>
+              )}
+
+              {onExportCsv && (
+                <Tooltip title="Esporta risultati in CSV">
+                  <span>
+                    <Button
+                      onClick={onExportCsv}
+                      startIcon={<Iconify icon="mdi:file-delimited-outline" />}
+                      size="small"
+                      variant="outlined"
+                      disabled={!canExportCsv}
+                      sx={{ borderRadius: 1.5 }}
+                    >
+                      Esporta CSV
+                    </Button>
+                  </span>
                 </Tooltip>
               )}
             </Box>
@@ -514,6 +535,16 @@ export function UserTableToolbar({
             )}
         </IconButton>
       </Tooltip>
+
+      {onExportCsv && (
+        <Tooltip title="Esporta CSV">
+          <span>
+            <IconButton onClick={onExportCsv} disabled={!canExportCsv}>
+              <Iconify icon="mdi:file-delimited-outline" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
       </Stack>
     </Box>
   );
