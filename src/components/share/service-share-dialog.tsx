@@ -432,25 +432,55 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
       const payload = await createImagePayload();
       if (!payload) return;
 
-      // Best mobile UX: open native share sheet when available.
-      if (navigator.canShare?.({ files: [payload.file] })) {
-        if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
-          mobilePreviewWindow.close();
-        }
-        await navigator.share({ files: [payload.file], title: payload.filename });
-        return;
-      }
-
       // Fallback for browsers that block "download" on mobile Safari.
       const blobUrl = URL.createObjectURL(payload.blob);
 
       if (isMobile) {
-        if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
-          mobilePreviewWindow.location.href = blobUrl;
-        } else {
-          window.open(blobUrl, '_blank');
+        // Try direct file download first (works on Android Chrome and many mobile browsers).
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = payload.filename;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        const ua = navigator.userAgent;
+        const isIOS =
+          /iPad|iPhone|iPod/.test(ua) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        // iOS Safari blocks true auto-save to Photos. Fallback to preview page.
+        if (isIOS) {
+          if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
+            mobilePreviewWindow.document.open();
+            mobilePreviewWindow.document.write(`
+              <!doctype html>
+              <html>
+                <head>
+                  <meta name="viewport" content="width=device-width, initial-scale=1" />
+                  <title>${payload.filename}</title>
+                  <style>
+                    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111; color: #fff; }
+                    .hint { padding: 10px 12px; font-size: 13px; text-align: center; background: #000; }
+                    img { display: block; width: 100%; height: auto; }
+                  </style>
+                </head>
+                <body>
+                  <div class="hint">iPhone/iPad: tieni premuto sull'immagine e scegli "Salva nelle foto"</div>
+                  <img src="${payload.dataUrl}" alt="Servizio" />
+                </body>
+              </html>
+            `);
+            mobilePreviewWindow.document.close();
+          } else {
+            window.open(blobUrl, '_blank');
+          }
+        } else if (mobilePreviewWindow && !mobilePreviewWindow.closed) {
+          mobilePreviewWindow.close();
         }
-        // Keep URL alive a bit longer in case the new tab loads slowly.
+
         setTimeout(() => URL.revokeObjectURL(blobUrl), 20000);
         return;
       }
@@ -542,7 +572,7 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
             disabled={isLoading}
             size="medium"
           >
-            {isLoading ? 'Creazione...' : 'Condividi immagine'}
+            {isLoading ? 'Creazione...' : 'Salva immagine'}
           </Button>
 
           <Tooltip title={copied ? 'Copiato!' : 'Copia testo negli appunti'} arrow>
