@@ -21,7 +21,6 @@ import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 
 import { domToPng } from 'modern-screenshot';
 
-import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { mapServiceType } from 'src/sections/service/constants';
 
@@ -184,9 +183,12 @@ const ServiceCard = ({ row, cardRef }: ServiceCardProps) => {
             {isSport ? 'Servizio Sportivo' : 'Servizio Secondario'}
           </Typography>
         </Stack>
-        <Label color={getStatusColor(row.status)} sx={{ fontSize: '0.75rem', height: 22, textTransform: 'capitalize' }}>
-          {row.status || '-'}
-        </Label>
+        <Chip
+          label={row.status || '-'}
+          color={getStatusColor(row.status)}
+          size="small"
+          sx={{ fontSize: '0.75rem', height: 22, textTransform: 'capitalize', borderRadius: 1 }}
+        />
       </Stack>
 
       <Divider />
