@@ -51,12 +51,33 @@ const ACCENT = { secondary: '#1976d2', sport: '#ed6c02' };
 
 
 // Inline detail row: "icon  Label: value"
-function DetailRow({ icon, label, value }: { icon: string; label: string; value?: string }) {
+function DetailRow({
+  icon,
+  label,
+  value,
+  noWrap = false,
+}: {
+  icon: string;
+  label: string;
+  value?: string;
+  noWrap?: boolean;
+}) {
   if (!value) return null;
   return (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 0.4, minWidth: 0 }}>
       <Iconify icon={icon} width={16} sx={{ color: 'text.secondary', flexShrink: 0 }} />
-      <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.4, wordBreak: 'break-word', minWidth: 0 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: '0.8rem',
+          lineHeight: 1.4,
+          wordBreak: noWrap ? 'normal' : 'break-word',
+          whiteSpace: noWrap ? 'nowrap' : 'normal',
+          overflow: noWrap ? 'hidden' : 'visible',
+          textOverflow: noWrap ? 'ellipsis' : 'clip',
+          minWidth: 0,
+        }}
+      >
         <Typography component="span" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
           {label}:
         </Typography>
@@ -76,17 +97,18 @@ function buildPlainTextSummary(data: UserProps): string {
 
   if (isSport) {
     if (data.eventName) text += `Evento: ${data.eventName}\n`;
+    if (data.arrivalTime) text += `In sede alle: ${data.arrivalTime}\n`;
+    if (data.departureTime) text += `Partenza alle: ${data.departureTime}\n`;
     if (data.startTime || data.endTime) text += `Orari evento: ${data.startTime || '?'} - ${data.endTime || '?'}\n`;
     if (data.organizerName) text += `Organizzatore: ${data.organizerName}\n`;
     if (data.organizerContact) text += `Contatto: ${data.organizerContact}\n`;
-    if (data.arrivalTime) text += `In sede alle: ${data.arrivalTime}\n`;
-    if (data.departureTime) text += `Partenza alle: ${data.departureTime}\n`;
     if (data.vehicle) text += `Mezzo: ${data.vehicle}\n`;
     if (data.equipmentItems && data.equipmentItems.length > 0) text += `Attrezzatura: ${data.equipmentItems.join(', ')}\n`;
   } else {
     if (data.name) text += `Paziente: ${data.name}\n`;
     if (data.serviceType) text += `Tipo servizio: ${mapServiceType(data.serviceType)}\n`;
-    if (data.time) text += `Orario: ${data.time}\n`;
+    if (data.arrivalTime) text += `In sede alle: ${data.arrivalTime}\n`;
+    if (data.departureTime) text += `Partenza alle: ${data.departureTime}\n`;
     if (data.pickupLocation) text += `Ritiro: ${data.pickupLocation}${data.pickupTime ? ` alle ${data.pickupTime}` : ''}\n`;
     if (data.destinationType) text += `Destinazione: ${data.destinationType}\n`;
     if (data.vehicle) text += `Mezzo: ${data.vehicle}\n`;
@@ -128,7 +150,12 @@ const ServiceCard = ({ row, cardRef }: ServiceCardProps) => {
     { icon: 'mdi:calendar-star', label: 'Evento', value: row.eventName },
     { icon: 'mdi:clock-check-outline', label: 'In sede alle', value: row.arrivalTime },
     { icon: 'mdi:clock-fast', label: 'Partenza alle', value: row.departureTime },
-    { icon: 'mdi:clock-start', label: 'Orari evento', value: (row.startTime || row.endTime) ? `${row.startTime || '?'} - ${row.endTime || '?'}` : undefined },
+    {
+      icon: 'mdi:clock-start',
+      label: 'Orari evento',
+      value: (row.startTime || row.endTime) ? `${row.startTime || '?'} - ${row.endTime || '?'}` : undefined,
+      noWrap: true,
+    },
     { icon: 'mdi:account-tie', label: 'Organizzatore', value: row.organizerName },
     { icon: 'mdi:ambulance', label: 'Mezzo', value: row.vehicle },
   ] : [];
@@ -183,7 +210,13 @@ const ServiceCard = ({ row, cardRef }: ServiceCardProps) => {
       {(details.some(d => d.value) || hasKmOrPrice) && (
         <Box sx={{ px: 2, py: 1, bgcolor: 'background.default' }}>
           {details.map((d) => (
-            <DetailRow key={d.label} icon={d.icon} label={d.label} value={d.value} />
+            <DetailRow
+              key={d.label}
+              icon={d.icon}
+              label={d.label}
+              value={d.value}
+              noWrap={'noWrap' in d ? !!d.noWrap : false}
+            />
           ))}
 
           {/* KM + Price side-by-side */}
@@ -297,8 +330,48 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // ---- Share / download image ----
-  const handleShareAsImage = async () => {
+  const buildWhatsAppText = () => {
+    const isSportService = serviceData.visit === 'Sportivo';
+
+    let message = `*${isSportService ? 'Servizio Sportivo' : 'Servizio Secondario'}*\n\n`;
+    message += `Data: ${serviceData.timestamp || serviceData.date || '-'}\n`;
+    message += `Stato: ${serviceData.status || '-'}\n\n`;
+
+    if (isSportService) {
+      if (serviceData.eventName) message += `*Evento:* ${serviceData.eventName}\n`;
+      if (serviceData.arrivalTime) message += `*In sede alle:* ${serviceData.arrivalTime}\n`;
+      if (serviceData.departureTime) message += `*Partenza alle:* ${serviceData.departureTime}\n`;
+      if (serviceData.startTime || serviceData.endTime) message += `*Orari:* ${serviceData.startTime || '?'} - ${serviceData.endTime || '?'}\n`;
+      if (serviceData.organizerName) message += `*Organizzatore:* ${serviceData.organizerName}\n`;
+      if (serviceData.organizerContact) message += `*Contatto:* ${serviceData.organizerContact}\n`;
+      if (serviceData.vehicle) message += `*Mezzo:* ${serviceData.vehicle}\n`;
+      if (serviceData.equipmentItems && serviceData.equipmentItems.length > 0) message += `*Attrezzatura:* ${serviceData.equipmentItems.join(', ')}\n`;
+    } else {
+      if (serviceData.name) message += `*Paziente:* ${serviceData.name}\n`;
+      if (serviceData.serviceType) message += `*Tipo servizio:* ${mapServiceType(serviceData.serviceType)}\n`;
+      if (serviceData.arrivalTime) message += `*In sede alle:* ${serviceData.arrivalTime}\n`;
+      if (serviceData.departureTime) message += `*Partenza alle:* ${serviceData.departureTime}\n`;
+      if (serviceData.pickupLocation) {
+        message += `*Ritiro:* ${serviceData.pickupLocation}`;
+        if (serviceData.pickupTime) message += ` alle ${serviceData.pickupTime}`;
+        message += `\n`;
+      }
+      if (serviceData.destinationType) message += `*Destinazione:* ${serviceData.destinationType}\n`;
+      if (serviceData.vehicle) message += `*Mezzo:* ${serviceData.vehicle}\n`;
+      if (serviceData.position) message += `*Posizione:* ${serviceData.position}\n`;
+      if (serviceData.equipment && serviceData.equipment.length > 0) message += `*Presidi:* ${serviceData.equipment.join(', ')}\n`;
+      if (serviceData.difficulties && serviceData.difficulties.length > 0) message += `*Difficoltà:* ${serviceData.difficulties.join(', ')}\n`;
+    }
+
+    if (serviceData.kilometers) message += `*KM:* ${serviceData.kilometers}\n`;
+    if (serviceData.price) message += `*Prezzo:* ${serviceData.price.toFixed(2)} €\n`;
+    if (serviceData.notes) message += `\n*Note:* ${serviceData.notes}\n`;
+
+    return message;
+  };
+
+  // ---- Download image ----
+  const handleDownloadImage = async () => {
     if (!cardRef.current) return;
     setIsLoading(true);
 
@@ -341,29 +414,14 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
         },
       });
 
-      // Convert data URL to blob for native sharing
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], `servizio-${serviceData.id || 'share'}.png`, { type: 'image/png' });
-
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] });
-      } else {
-        // Fallback: download the image
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = file.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-
-      onClose();
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `servizio-${serviceData.id || 'share'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error: any) {
-      // AbortError = user cancelled share sheet, not a real error
-      if (error?.name !== 'AbortError') {
-        console.error('Error sharing image:', error);
-      }
+      console.error('Error downloading image:', error);
     } finally {
       setIsLoading(false);
     }
@@ -393,41 +451,7 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
 
   // ---- Share via WhatsApp ----
   const handleShareViaWhatsApp = () => {
-    const isSportService = serviceData.visit === 'Sportivo';
-
-    let message = `*${isSportService ? 'Servizio Sportivo' : 'Servizio Secondario'}*\n\n`;
-    message += `Data: ${serviceData.timestamp || serviceData.date || '-'}\n`;
-    message += `Stato: ${serviceData.status || '-'}\n\n`;
-
-    if (isSportService) {
-      if (serviceData.eventName) message += `*Evento:* ${serviceData.eventName}\n`;
-      if (serviceData.startTime || serviceData.endTime) message += `*Orari:* ${serviceData.startTime || '?'} - ${serviceData.endTime || '?'}\n`;
-      if (serviceData.organizerName) message += `*Organizzatore:* ${serviceData.organizerName}\n`;
-      if (serviceData.organizerContact) message += `*Contatto:* ${serviceData.organizerContact}\n`;
-      if (serviceData.arrivalTime) message += `*In sede alle:* ${serviceData.arrivalTime}\n`;
-      if (serviceData.departureTime) message += `*Partenza alle:* ${serviceData.departureTime}\n`;
-      if (serviceData.vehicle) message += `*Mezzo:* ${serviceData.vehicle}\n`;
-      if (serviceData.equipmentItems && serviceData.equipmentItems.length > 0) message += `*Attrezzatura:* ${serviceData.equipmentItems.join(', ')}\n`;
-    } else {
-      if (serviceData.name) message += `*Paziente:* ${serviceData.name}\n`;
-      if (serviceData.serviceType) message += `*Tipo servizio:* ${mapServiceType(serviceData.serviceType)}\n`;
-      if (serviceData.time) message += `*Orario:* ${serviceData.time}\n`;
-      if (serviceData.pickupLocation) {
-        message += `*Ritiro:* ${serviceData.pickupLocation}`;
-        if (serviceData.pickupTime) message += ` alle ${serviceData.pickupTime}`;
-        message += `\n`;
-      }
-      if (serviceData.destinationType) message += `*Destinazione:* ${serviceData.destinationType}\n`;
-      if (serviceData.vehicle) message += `*Mezzo:* ${serviceData.vehicle}\n`;
-      if (serviceData.position) message += `*Posizione:* ${serviceData.position}\n`;
-      if (serviceData.equipment && serviceData.equipment.length > 0) message += `*Presidi:* ${serviceData.equipment.join(', ')}\n`;
-      if (serviceData.difficulties && serviceData.difficulties.length > 0) message += `*Difficoltà:* ${serviceData.difficulties.join(', ')}\n`;
-    }
-
-    if (serviceData.kilometers) message += `*KM:* ${serviceData.kilometers}\n`;
-    if (serviceData.price) message += `*Prezzo:* ${serviceData.price.toFixed(2)} €\n`;
-    if (serviceData.notes) message += `\n*Note:* ${serviceData.notes}\n`;
-
+    const message = buildWhatsAppText();
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     onClose();
   };
@@ -466,12 +490,12 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
           <Button
             fullWidth
             variant="contained"
-            onClick={handleShareAsImage}
-            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="mdi:share-variant" />}
+            onClick={handleDownloadImage}
+            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="mdi:download" />}
             disabled={isLoading}
             size="medium"
           >
-            {isLoading ? 'Creazione...' : 'Immagine'}
+            {isLoading ? 'Creazione...' : 'Scarica'}
           </Button>
 
           <Tooltip title={copied ? 'Copiato!' : 'Copia testo negli appunti'} arrow>

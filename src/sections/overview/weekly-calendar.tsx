@@ -1,8 +1,8 @@
 import type { Service } from 'src/types';
 
-import { format, addDays, isSameDay, startOfWeek } from 'date-fns';
+import { format, addDays, isSameDay, startOfWeek, addWeeks } from 'date-fns';
 import it from 'date-fns/locale/it';
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -12,6 +12,8 @@ import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import CardHeader from '@mui/material/CardHeader';
 import { alpha, useTheme } from '@mui/material/styles';
 
@@ -25,6 +27,14 @@ import { Iconify } from 'src/components/iconify';
 // ----------------------------------------------------------------------
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
+function buildWeekDays(weekStart: Date): Date[] {
+  const days: Date[] = [];
+  for (let i = 0; i < 7; i += 1) {
+    days.push(addDays(weekStart, i));
+  }
+  return days;
+}
 
 function getServiceDate(service: Service): string {
   if (service.type === 'secondary') return service.serviceDate ?? '';
@@ -71,18 +81,27 @@ export function WeeklyCalendar() {
   const [allServices, setAllServices] = useState<Service[]>([]);
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const [selectedDay, setSelectedDay] = useState<string | null>(todayKey);
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [isWeekLoading, setIsWeekLoading] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    if (hasLoadedOnceRef.current) {
+      setIsWeekLoading(true);
+    } else {
+      setIsLoading(true);
+    }
 
     // Build the week (Monday-Sunday)
-    const now = new Date();
-    const monday = startOfWeek(now, { weekStartsOn: 1 });
-    const days: Date[] = [];
-    for (let i = 0; i < 7; i += 1) {
-      days.push(addDays(monday, i));
-    }
+    const days = buildWeekDays(weekStart);
     setWeekDays(days);
+    setSelectedDay((prev) => {
+      if (prev && days.some((day) => format(day, 'yyyy-MM-dd') === prev)) return prev;
+      return days.some((day) => format(day, 'yyyy-MM-dd') === todayKey)
+        ? todayKey
+        : format(days[0], 'yyyy-MM-dd');
+    });
 
     const dateFrom = format(days[0], 'yyyy-MM-dd');
     const dateTo = format(days[6], 'yyyy-MM-dd');
@@ -125,13 +144,17 @@ export function WeeklyCalendar() {
       } catch {
         // Non-critical widget
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          setIsWeekLoading(false);
+          hasLoadedOnceRef.current = true;
+        }
       }
     }
 
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [todayKey, weekStart]);
 
   const handleDayClick = (dayKey: string) => {
     setSelectedDay((prev) => (prev === dayKey ? null : dayKey));
@@ -143,6 +166,18 @@ export function WeeklyCalendar() {
     } else {
       router.push(`/servizi/secondari/modifica/${service.id}`);
     }
+  };
+
+  const handlePreviousWeek = () => {
+    setWeekStart((prev) => addWeeks(prev, -1));
+  };
+
+  const handleNextWeek = () => {
+    setWeekStart((prev) => addWeeks(prev, 1));
+  };
+
+  const handleTodayWeek = () => {
+    setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
   const selectedServices = selectedDay
@@ -173,12 +208,36 @@ export function WeeklyCalendar() {
             ? `${format(weekDays[0], 'd MMM', { locale: it })} - ${format(weekDays[6], 'd MMM yyyy', { locale: it })}`
             : undefined
         }
+        action={
+          <Stack direction="row" spacing={0.5}>
+            <Button size="small" onClick={handleTodayWeek} disabled={isWeekLoading}>
+              Torna a oggi
+            </Button>
+            <IconButton
+              size="small"
+              onClick={handlePreviousWeek}
+              aria-label="Settimana precedente"
+              disabled={isWeekLoading}
+            >
+              <Iconify icon="mdi:chevron-left" width={20} />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={handleNextWeek}
+              aria-label="Settimana successiva"
+              disabled={isWeekLoading}
+            >
+              <Iconify icon="mdi:chevron-right" width={20} />
+            </IconButton>
+          </Stack>
+        }
       />
 
       <Box
         sx={{
           px: 3,
           pb: 1.5,
+          pt: 1.5,
           display: 'grid',
           gridTemplateColumns: { xs: 'repeat(7, 1fr)' },
           gap: { xs: 0.75, sm: 1.5 },
@@ -191,6 +250,26 @@ export function WeeklyCalendar() {
           const isDayToday = isSameDay(day, today);
           const isPast = day < today && !isDayToday;
           const isSelected = selectedDay === key;
+
+          if (isWeekLoading) {
+            return (
+              <Box
+                key={key}
+                sx={{
+                  textAlign: 'center',
+                  py: { xs: 1.25, sm: 1.5 },
+                  px: { xs: 0.5, sm: 1 },
+                  borderRadius: 2,
+                  bgcolor: 'background.neutral',
+                  border: '2px solid transparent',
+                }}
+              >
+                <Skeleton variant="text" width={26} sx={{ mx: 'auto', fontSize: { xs: '0.7rem', sm: '0.8rem' } }} />
+                <Skeleton variant="text" width={20} sx={{ mx: 'auto', fontSize: { xs: '1.25rem', sm: '1.4rem' } }} />
+                <Skeleton variant="circular" width={16} height={16} sx={{ mx: 'auto', mt: 0.5 }} />
+              </Box>
+            );
+          }
 
           return (
             <Box
@@ -310,21 +389,43 @@ export function WeeklyCalendar() {
         <Divider />
         <Box sx={{ px: 3, py: 2 }}>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-            <Typography variant="subtitle2">
-              {selectedDay
-                ? format(new Date(selectedDay), "EEEE d MMMM", { locale: it })
-                : ''}
-            </Typography>
-            <Chip
-              label={`${selectedServices.length} servizi`}
-              size="small"
-              color="primary"
-              variant="outlined"
-              sx={{ height: 22, fontSize: '0.7rem', fontWeight: 700, textTransform: 'capitalize' }}
-            />
+            {isWeekLoading ? (
+              <>
+                <Skeleton variant="text" width={140} sx={{ fontSize: '1rem' }} />
+                <Skeleton variant="rounded" width={78} height={22} />
+              </>
+            ) : (
+              <>
+                <Typography variant="subtitle2">
+                  {selectedDay
+                    ? format(new Date(selectedDay), "EEEE d MMMM", { locale: it })
+                    : ''}
+                </Typography>
+                <Chip
+                  label={`${selectedServices.length} servizi`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ height: 22, fontSize: '0.7rem', fontWeight: 700, textTransform: 'capitalize' }}
+                />
+              </>
+            )}
           </Stack>
 
-          {selectedServices.length === 0 ? (
+          {isWeekLoading ? (
+            <Stack spacing={1}>
+              {Array.from({ length: 1 }).map((_, index) => (
+                <Stack key={index} direction="row" alignItems="center" spacing={1.25} sx={{ py: 0.75 }}>
+                  <Skeleton variant="rounded" width={36} height={36} sx={{ borderRadius: 1.5 }} />
+                  <Box sx={{ flex: 1 }}>
+                    <Skeleton variant="text" width="45%" sx={{ fontSize: '0.9rem' }} />
+                    <Skeleton variant="text" width="30%" sx={{ fontSize: '0.75rem' }} />
+                  </Box>
+                  <Skeleton variant="rounded" width={64} height={20} />
+                </Stack>
+              ))}
+            </Stack>
+          ) : selectedServices.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Nessun servizio per questo giorno
