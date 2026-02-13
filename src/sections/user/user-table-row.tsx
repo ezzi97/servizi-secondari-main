@@ -32,6 +32,7 @@ import type { UserProps } from './models';
 type UserTableRowProps = {
   row: UserProps;
   canArchive?: boolean;
+  onArchived?: () => void;
 };
 
 const STATUS_OPTIONS = [
@@ -69,7 +70,7 @@ function getStatusColorFromCode(
   }
 }
 
-export function UserTableRow({ row, canArchive = true }: UserTableRowProps) {
+export function UserTableRow({ row, canArchive = true, onArchived }: UserTableRowProps) {
   const theme = useTheme();
   const router = useRouter();
   const { updateService } = useServices();
@@ -150,6 +151,7 @@ export function UserTableRow({ row, canArchive = true }: UserTableRowProps) {
         setIsSubmitting(true);
         await updateService(row.id, { archivedAt: null });
         showSuccess('Servizio ripristinato per la modifica');
+        onArchived?.();
       } catch (err) {
         console.error(err);
         showError('Errore durante il ripristino del servizio');
@@ -177,6 +179,7 @@ export function UserTableRow({ row, canArchive = true }: UserTableRowProps) {
       await updateService(row.id, { archivedAt: isArchivedRow ? null : new Date().toISOString() });
       showSuccess(isArchivedRow ? 'Servizio ripristinato con successo' : 'Servizio archiviato con successo');
       handleCloseArchiveDialog();
+      onArchived?.();
     } catch (err) {
       console.error(err);
       showError(isArchivedRow ? 'Errore durante il ripristino del servizio' : 'Errore durante l\'archiviazione del servizio');

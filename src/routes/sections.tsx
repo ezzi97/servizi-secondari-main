@@ -65,6 +65,8 @@ export function Router() {
         { path: 'tutti-servizi', element: <AllServicesPage /> },
         { path: 'servizi-archiviati', element: <ArchivedServicesPage /> },
         { path: 'analisi', element: <AnalyticsPage /> },
+        { path: 'servizi/secondari/nuovo', element: <SecondaryServicePage /> },
+        { path: 'servizi/sportivi/nuovo', element: <SportServicePage /> },
         {
           path: 'servizi/secondari/modifica/:id',
           element: <EditSecondaryServiceView />,

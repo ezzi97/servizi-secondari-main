@@ -564,6 +564,7 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
                           key={row.id}
                           row={row}
                           canArchive={mode !== 'archived'}
+                          onArchived={fetchWithFilters}
                         />
                       ))}
 

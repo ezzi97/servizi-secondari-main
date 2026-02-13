@@ -29,7 +29,7 @@ export function ServiceFormWrapper<T extends FieldValues>({
   onSubmit,
   children,
   successMessage = 'Servizio creato con successo',
-  redirectPath = '/servizi',
+  redirectPath = '/tutti-servizi',
 }: ServiceFormWrapperProps<T>) {
   const router = useRouter();
   const { success, error: showError } = useToast();
