@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import it from 'date-fns/locale/it';
-import { useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -28,9 +28,8 @@ import { Scrollbar } from 'src/components/scrollbar';
 import { TableNoData } from '../table-no-data';
 import { UserTableRow } from '../user-table-row';
 import { UserTableHead } from '../user-table-head';
-import { TableEmptyRows } from '../table-empty-rows';
 import { UserTableToolbar } from '../user-table-toolbar';
-import { emptyRows, applyFilter, getComparator } from '../utils';
+import { applyFilter, getComparator } from '../utils';
 
 import type { UserProps } from '../models';
 
@@ -47,6 +46,26 @@ function mapStatus(status: string): string {
   };
   return statusMap[status] || status;
 }
+
+/** Map Italian filter labels to API values */
+const STATUS_TO_API: Record<string, string> = {
+  Bozza: 'draft',
+  'In attesa': 'pending',
+  Confermato: 'confirmed',
+  Effettuato: 'completed',
+  Cancellato: 'cancelled',
+};
+const VISIT_TO_API: Record<string, 'sport' | 'secondary'> = {
+  Sportivo: 'sport',
+  Secondario: 'secondary',
+};
+const ORDERBY_TO_SORT: Record<string, string> = {
+  date: 'service_date',
+  timestamp: 'service_date',
+  visit: 'type',
+  status: 'status',
+  name: 'service_date',
+};
 
 /** Map a Service from the API to UserProps for the table */
 function serviceToRow(service: any): UserProps {
@@ -157,7 +176,7 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
   const table = useTable();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { services, isLoading, fetchServices } = useServices();
+  const { services, total, isLoading, fetchServices } = useServices();
 
   // Date filter state
   const [filterDateFrom, setFilterDateFrom] = useState<Date | null>(null);
@@ -172,10 +191,6 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
   const handleCloseDateFilter = () => {
     setDateAnchorEl(null);
   };
-  const handleClearDateFilters = () => {
-    setFilterDateFrom(null);
-    setFilterDateTo(null);
-  };
   const formatDateLabel = (date: Date) => format(date, 'dd MMM yyyy', { locale: it });
   const applyDatePreset = (preset: typeof DATE_PRESETS[number]) => {
     const { from, to } = preset.getDates();
@@ -184,37 +199,141 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
     if (isMobile) handleCloseDateFilter();
   };
 
-  // Fetch services on mount
-  useEffect(() => {
-    fetchServices({ archived: mode === 'archived' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
-
+  // ---- Pending filter state (what the user edits in the UI) ----
   const [filterName, setFilterName] = useState('');
   const [filterVisit, setFilterVisit] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterVehicle, setFilterVehicle] = useState('');
 
-  // Convert real services to table rows
+  // Debounce timer for live name search
+  const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (nameTimerRef.current) clearTimeout(nameTimerRef.current); }, []);
+
+  // ---- Applied filter state (what actually drives the API fetch) ----
+  const [appliedFilters, setAppliedFilters] = useState({
+    name: '',
+    visit: '',
+    status: '',
+    vehicle: '',
+    dateFrom: null as Date | null,
+    dateTo: null as Date | null,
+  });
+
+  // Fetch whenever applied filters, pagination, sort, or mode change
+  const fetchWithFilters = useCallback(() => {
+    const sortBy = ORDERBY_TO_SORT[table.orderBy] || 'service_date';
+    const filters: Record<string, unknown> = {
+      archived: mode === 'archived',
+      page: table.page + 1,
+      pageSize: table.rowsPerPage,
+      sortBy,
+      sortOrder: table.order,
+    };
+    if (appliedFilters.dateFrom) filters.dateFrom = format(appliedFilters.dateFrom, 'yyyy-MM-dd');
+    if (appliedFilters.dateTo) filters.dateTo = format(appliedFilters.dateTo, 'yyyy-MM-dd');
+    if (appliedFilters.visit && appliedFilters.visit !== 'Tutti') {
+      const type = VISIT_TO_API[appliedFilters.visit];
+      if (type) filters.type = type;
+    }
+    if (appliedFilters.status && appliedFilters.status !== 'Tutti') {
+      const apiStatus = STATUS_TO_API[appliedFilters.status];
+      if (apiStatus) filters.status = apiStatus;
+    }
+    if (appliedFilters.name) filters.search = appliedFilters.name;
+    if (appliedFilters.vehicle && appliedFilters.vehicle !== 'Tutti') {
+      filters.vehicle = appliedFilters.vehicle;
+    }
+    fetchServices(filters as any);
+  }, [mode, table.page, table.rowsPerPage, table.orderBy, table.order, appliedFilters, fetchServices]);
+
+  // Auto-fetch on mount and whenever applied filters / pagination / sort change
+  useEffect(() => {
+    fetchWithFilters();
+  }, [fetchWithFilters]);
+
+  // ---- "Applica" handler: copy pending → applied ----
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({
+      name: filterName,
+      visit: filterVisit,
+      status: filterStatus,
+      vehicle: filterVehicle,
+      dateFrom: filterDateFrom,
+      dateTo: filterDateTo,
+    });
+    table.onResetPage();
+  }, [filterName, filterVisit, filterStatus, filterVehicle, filterDateFrom, filterDateTo, table]);
+
+  // Remove a single filter chip and immediately refetch
+  const handleRemoveFilter = useCallback((key: 'status' | 'visit' | 'vehicle') => {
+    if (key === 'status') setFilterStatus('');
+    if (key === 'visit') setFilterVisit('');
+    if (key === 'vehicle') setFilterVehicle('');
+    setAppliedFilters(prev => ({ ...prev, [key]: '' }));
+    table.onResetPage();
+  }, [table]);
+
+  // Clear ALL filters and refetch
+  const handleClearAllFilters = useCallback(() => {
+    setFilterName('');
+    setFilterVisit('');
+    setFilterStatus('');
+    setFilterVehicle('');
+    setFilterDateFrom(null);
+    setFilterDateTo(null);
+    setAppliedFilters({ name: '', visit: '', status: '', vehicle: '', dateFrom: null, dateTo: null });
+    table.onResetPage();
+  }, [table]);
+
+  // Remove date filter and refetch
+  const handleRemoveDateFilter = useCallback(() => {
+    setFilterDateFrom(null);
+    setFilterDateTo(null);
+    setAppliedFilters(prev => ({ ...prev, dateFrom: null, dateTo: null }));
+    table.onResetPage();
+  }, [table]);
+
+  // Apply only dates (from the date popover "Applica" button)
+  const handleApplyDateFilters = useCallback(() => {
+    setAppliedFilters(prev => ({ ...prev, dateFrom: filterDateFrom, dateTo: filterDateTo }));
+    table.onResetPage();
+  }, [filterDateFrom, filterDateTo, table]);
+
+  // Live name search: debounce 400ms, immediate on clear
+  const handleFilterName = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setFilterName(value);
+
+    if (nameTimerRef.current) clearTimeout(nameTimerRef.current);
+
+    if (!value) {
+      // Cleared — apply immediately
+      setAppliedFilters(prev => ({ ...prev, name: '' }));
+      table.onResetPage();
+    } else {
+      nameTimerRef.current = setTimeout(() => {
+        setAppliedFilters(prev => ({ ...prev, name: value }));
+        table.onResetPage();
+      }, 400);
+    }
+  }, [table]);
+
+  // Convert services to table rows — all filtering is server-side now
   const rows: UserProps[] = services.map(serviceToRow);
-  const modeFilteredRows = rows.filter((row) => {
-    const isArchived = !!row.archivedAt;
-    return mode === 'archived' ? isArchived : !isArchived;
-  });
-
   const dataFiltered: UserProps[] = applyFilter({
-    inputData: modeFilteredRows,
+    inputData: rows,
     comparator: getComparator(table.order, table.orderBy),
-    filterName,
-    filterVisit,
-    filterStatus,
-    filterVehicle,
-    filterDateFrom: filterDateFrom ?? null,
-    filterDateTo: filterDateTo ?? null
+    filterName: '',
+    filterVisit: '',
+    filterStatus: '',
+    filterVehicle: '',
+    filterDateFrom: null,
+    filterDateTo: null,
   });
 
-  const notFound = !dataFiltered.length && !!filterName;
-  const isEmpty = !isLoading && modeFilteredRows.length === 0;
+  const hasAnyAppliedFilter = appliedFilters.name || appliedFilters.visit || appliedFilters.status || appliedFilters.vehicle || appliedFilters.dateFrom || appliedFilters.dateTo;
+  const notFound = !dataFiltered.length && !!hasAnyAppliedFilter;
+  const isEmpty = !isLoading && total === 0;
 
   const escapeCsvValue = (value: unknown): string => {
     if (value === null || value === undefined) return '';
@@ -288,42 +407,33 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
           filterVisit={filterVisit}
           filterStatus={filterStatus}
           filterVehicle={filterVehicle}
-          onFilterName={(event) => {
-            setFilterName(event.target.value);
-            table.onResetPage();
-          }}
-          onFilterVisit={(value) => {
-            setFilterVisit(value);
-            table.onResetPage();
-          }}
-          onFilterStatus={(value) => {
-            setFilterStatus(value);
-            table.onResetPage();
-          }}
-          onFilterVehicle={(value) => {
-            setFilterVehicle(value);
-            table.onResetPage();
-          }}
+          onFilterName={handleFilterName}
+          onFilterVisit={(value) => setFilterVisit(value)}
+          onFilterStatus={(value) => setFilterStatus(value)}
+          onFilterVehicle={(value) => setFilterVehicle(value)}
           onExportCsv={handleExportCsv}
           canExportCsv={dataFiltered.length > 0}
+          onApply={handleApplyFilters}
+          onRemoveFilter={handleRemoveFilter}
+          onClearAllFilters={handleClearAllFilters}
         />
 
-        {/* Active date filter chip */}
-        {(filterDateFrom || filterDateTo) && (
+        {/* Active date filter chip — shows applied dates */}
+        {(appliedFilters.dateFrom || appliedFilters.dateTo) && (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2.5, py: 1 }}>
             <Chip
               size="small"
               color="primary"
               variant="outlined"
-              onDelete={handleClearDateFilters}
+              onDelete={handleRemoveDateFilter}
               label={
-                filterDateFrom && filterDateTo
-                  ? filterDateFrom.getTime() === filterDateTo.getTime()
-                    ? formatDateLabel(filterDateFrom)
-                    : `${formatDateLabel(filterDateFrom)} – ${formatDateLabel(filterDateTo)}`
-                  : filterDateFrom
-                    ? `Da: ${formatDateLabel(filterDateFrom)}`
-                    : `A: ${formatDateLabel(filterDateTo!)}`
+                appliedFilters.dateFrom && appliedFilters.dateTo
+                  ? appliedFilters.dateFrom.getTime() === appliedFilters.dateTo.getTime()
+                    ? formatDateLabel(appliedFilters.dateFrom)
+                    : `${formatDateLabel(appliedFilters.dateFrom)} – ${formatDateLabel(appliedFilters.dateTo)}`
+                  : appliedFilters.dateFrom
+                    ? `Da: ${formatDateLabel(appliedFilters.dateFrom)}`
+                    : `A: ${formatDateLabel(appliedFilters.dateTo!)}`
               }
             />
           </Stack>
@@ -388,11 +498,11 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
 
             <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
               {hasActiveDateFilters && (
-                <Button variant="outlined" color="inherit" onClick={handleClearDateFilters} size="small">
+                <Button variant="outlined" color="inherit" onClick={() => { handleRemoveDateFilter(); handleCloseDateFilter(); }} size="small">
                   Cancella
                 </Button>
               )}
-              <Button variant="contained" onClick={handleCloseDateFilter} size="small" sx={{ ml: 'auto' }}>
+              <Button variant="contained" onClick={() => { handleApplyDateFilters(); handleCloseDateFilter(); }} size="small" sx={{ ml: 'auto' }}>
                 Applica
               </Button>
             </Box>
@@ -426,7 +536,10 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
               <UserTableHead
                 order={table.order}
                 orderBy={table.orderBy}
-                onSort={table.onSort}
+                onSort={(id) => {
+                  table.onSort(id);
+                  table.onResetPage();
+                }}
                 headLabel={[
                   { id: 'name', label: 'Paziente / Evento' },
                   { id: 'visit', label: 'Tipo' },
@@ -446,12 +559,7 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
                   </tr>
                 ) : (
                   <>
-                    {dataFiltered
-                      .slice(
-                        table.page * table.rowsPerPage,
-                        table.page * table.rowsPerPage + table.rowsPerPage
-                      )
-                      .map((row) => (
+                    {dataFiltered.map((row) => (
                         <UserTableRow
                           key={row.id}
                           row={row}
@@ -459,12 +567,7 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
                         />
                       ))}
 
-                    <TableEmptyRows
-                      height={68}
-                      emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
-                    />
-
-                    {isEmpty && !filterName && (
+                    {isEmpty && !hasAnyAppliedFilter && (
                       <tr>
                         <td colSpan={5}>
                           <Box sx={{ py: 10, textAlign: 'center' }}>
@@ -482,7 +585,7 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
                       </tr>
                     )}
 
-                    {notFound && <TableNoData searchQuery={filterName} />}
+                    {notFound && <TableNoData searchQuery={appliedFilters.name} />}
                   </>
                 )}
               </TableBody>
@@ -501,11 +604,15 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
             component="div"
             labelRowsPerPage="Per pagina"
             page={table.page}
-            count={dataFiltered.length}
+            count={total}
             rowsPerPage={table.rowsPerPage}
-            onPageChange={table.onChangePage}
-            rowsPerPageOptions={[5, 10, 25]}
-            onRowsPerPageChange={table.onChangeRowsPerPage}
+            onPageChange={(_, newPage) => {
+              table.onChangePage(_, newPage);
+            }}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            onRowsPerPageChange={(e) => {
+              table.onChangeRowsPerPage(e);
+            }}
           />
         </Box>
       </Card>
@@ -559,7 +666,7 @@ export function useTable() {
   }, []);
 
   const onChangeRowsPerPage = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setRowsPerPage(parseInt(event.target.value, 10));
       onResetPage();
     },

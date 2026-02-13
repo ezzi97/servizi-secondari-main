@@ -14,6 +14,8 @@ import { RouterLink } from 'src/routes/components';
 
 import { useAppTheme } from 'src/hooks/use-theme-mode';
 
+import { authService } from 'src/services';
+
 import { FormProvider, RHFTextField } from 'src/components/hook-form';
 
 export default function ForgotPasswordView() {
@@ -42,9 +44,12 @@ export default function ForgotPasswordView() {
   const onSubmit = handleSubmit(async (data) => {
     try {
       setError('');
-      // Add your password reset logic here
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
+      const response = await authService.forgotPassword(data.email);
+
+      if (!response.success) {
+        throw new Error(response.message || 'Errore durante l\'invio dell\'email');
+      }
+
       setEmailSent(true);
       reset();
       

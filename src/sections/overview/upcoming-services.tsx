@@ -1,8 +1,8 @@
 import type { Service } from 'src/types';
 
-import { format, isSameDay } from 'date-fns';
 import it from 'date-fns/locale/it';
 import { useState, useEffect } from 'react';
+import { format, isSameDay } from 'date-fns';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';

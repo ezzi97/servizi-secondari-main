@@ -90,11 +90,18 @@ export function AnalyticsView() {
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [chartsLoading, setChartsLoading] = useState(true);
 
+  // ---- Pending date state (what the user edits in the popover) ----
   const [filterDateFrom, setFilterDateFrom] = useState<Date | null>(null);
   const [filterDateTo, setFilterDateTo] = useState<Date | null>(null);
+
+  // ---- Applied date state (what actually drives the data) ----
+  const [appliedDateFrom, setAppliedDateFrom] = useState<Date | null>(null);
+  const [appliedDateTo, setAppliedDateTo] = useState<Date | null>(null);
+
   const [dateAnchorEl, setDateAnchorEl] = useState<HTMLElement | null>(null);
   const openDateFilter = Boolean(dateAnchorEl);
   const hasActiveDateFilters = filterDateFrom || filterDateTo;
+  const hasAppliedDateFilters = appliedDateFrom || appliedDateTo;
 
   const handleOpenDateFilter = (event: React.MouseEvent<HTMLElement>) => {
     setDateAnchorEl(event.currentTarget);
@@ -102,9 +109,23 @@ export function AnalyticsView() {
   const handleCloseDateFilter = () => {
     setDateAnchorEl(null);
   };
+  const handleApplyDateFilters = () => {
+    setAppliedDateFrom(filterDateFrom);
+    setAppliedDateTo(filterDateTo);
+    handleCloseDateFilter();
+  };
   const handleClearDateFilters = () => {
     setFilterDateFrom(null);
     setFilterDateTo(null);
+    setAppliedDateFrom(null);
+    setAppliedDateTo(null);
+    handleCloseDateFilter();
+  };
+  const handleRemoveDateChip = () => {
+    setFilterDateFrom(null);
+    setFilterDateTo(null);
+    setAppliedDateFrom(null);
+    setAppliedDateTo(null);
   };
   const formatDateLabel = (date: Date) => format(date, 'dd MMM yyyy', { locale: it });
   const applyDatePreset = (preset: typeof DATE_PRESETS[number]) => {
@@ -113,8 +134,9 @@ export function AnalyticsView() {
     setFilterDateTo(to);
   };
 
+  // Filter services using APPLIED dates
   const services = useMemo(() => {
-    if (!filterDateFrom && !filterDateTo) return allServices;
+    if (!appliedDateFrom && !appliedDateTo) return allServices;
 
     return allServices.filter((service) => {
       const rawDate = service.type === 'secondary' ? service.serviceDate : service.eventDateSport;
@@ -123,27 +145,27 @@ export function AnalyticsView() {
       const serviceDate = new Date(rawDate);
       if (Number.isNaN(serviceDate.getTime())) return false;
 
-      if (filterDateFrom) {
-        const from = new Date(filterDateFrom);
+      if (appliedDateFrom) {
+        const from = new Date(appliedDateFrom);
         from.setHours(0, 0, 0, 0);
         if (serviceDate < from) return false;
       }
 
-      if (filterDateTo) {
-        const to = new Date(filterDateTo);
+      if (appliedDateTo) {
+        const to = new Date(appliedDateTo);
         to.setHours(23, 59, 59, 999);
         if (serviceDate > to) return false;
       }
 
       return true;
     });
-  }, [allServices, filterDateFrom, filterDateTo]);
+  }, [allServices, appliedDateFrom, appliedDateTo]);
 
   const monthKeysForCharts = useMemo(() => {
-    if (!filterDateFrom && !filterDateTo) return undefined;
+    if (!appliedDateFrom && !appliedDateTo) return undefined;
 
-    const fromSeed = filterDateFrom ?? filterDateTo;
-    const toSeed = filterDateTo ?? filterDateFrom;
+    const fromSeed = appliedDateFrom ?? appliedDateTo;
+    const toSeed = appliedDateTo ?? appliedDateFrom;
     if (!fromSeed || !toSeed) return undefined;
 
     const start = new Date(fromSeed.getFullYear(), fromSeed.getMonth(), 1);
@@ -157,7 +179,7 @@ export function AnalyticsView() {
     }
 
     return keys;
-  }, [filterDateFrom, filterDateTo]);
+  }, [appliedDateFrom, appliedDateTo]);
 
   const localStats = useMemo(() => {
     const total = services.length;
@@ -182,7 +204,7 @@ export function AnalyticsView() {
     };
   }, [services]);
 
-  const activeStats = filterDateFrom || filterDateTo ? localStats : stats;
+  const activeStats = appliedDateFrom || appliedDateTo ? localStats : stats;
 
   useEffect(() => {
     fetchStats();
@@ -262,14 +284,14 @@ export function AnalyticsView() {
           onClick={handleOpenDateFilter}
           sx={{
             position: 'relative',
-            ...(hasActiveDateFilters && {
+            ...(hasAppliedDateFilters && {
               color: 'primary.main',
               bgcolor: 'primary.lighter',
             }),
           }}
         >
           <Iconify icon="mdi:calendar-filter" />
-          {hasActiveDateFilters && (
+          {hasAppliedDateFilters && (
             <Box
               component="span"
               sx={{
@@ -286,21 +308,21 @@ export function AnalyticsView() {
         </IconButton>
       </Stack>
 
-      {(filterDateFrom || filterDateTo) && (
+      {hasAppliedDateFilters && (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
           <Chip
             size="small"
             color="primary"
             variant="outlined"
-            onDelete={handleClearDateFilters}
+            onDelete={handleRemoveDateChip}
             label={
-              filterDateFrom && filterDateTo
-                ? filterDateFrom.getTime() === filterDateTo.getTime()
-                  ? formatDateLabel(filterDateFrom)
-                  : `${formatDateLabel(filterDateFrom)} – ${formatDateLabel(filterDateTo)}`
-                : filterDateFrom
-                  ? `Da: ${formatDateLabel(filterDateFrom)}`
-                  : `A: ${formatDateLabel(filterDateTo!)}`
+              appliedDateFrom && appliedDateTo
+                ? appliedDateFrom.getTime() === appliedDateTo.getTime()
+                  ? formatDateLabel(appliedDateFrom)
+                  : `${formatDateLabel(appliedDateFrom)} – ${formatDateLabel(appliedDateTo)}`
+                : appliedDateFrom
+                  ? `Da: ${formatDateLabel(appliedDateFrom)}`
+                  : `A: ${formatDateLabel(appliedDateTo!)}`
             }
           />
         </Stack>
@@ -370,7 +392,7 @@ export function AnalyticsView() {
                 Cancella
               </Button>
             )}
-            <Button variant="contained" onClick={handleCloseDateFilter} size="small" sx={{ ml: 'auto' }}>
+            <Button variant="contained" onClick={handleApplyDateFilters} size="small" sx={{ ml: 'auto' }}>
               Applica
             </Button>
           </Box>

@@ -2,6 +2,7 @@ import type { RefObject} from 'react';
 import type { UserProps } from 'src/sections/user/models';
 
 import { useRef, useState } from 'react';
+import { domToPng } from 'modern-screenshot';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -10,18 +11,16 @@ import Stack from '@mui/material/Stack';
 import Dialog from '@mui/material/Dialog';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import CircularProgress from '@mui/material/CircularProgress';
-import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
-
-import { domToPng } from 'modern-screenshot';
+import { useTheme, createTheme, ThemeProvider } from '@mui/material/styles';
 
 import { Iconify } from 'src/components/iconify';
+
 import { mapServiceType } from 'src/sections/service/constants';
 
 // Light theme for the share card (ensures consistent image export)

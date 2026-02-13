@@ -59,6 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch {
           // Token verification failed
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          setState({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return;
         }
 
         // Verification failed or unauthorized — clear stored data and log out

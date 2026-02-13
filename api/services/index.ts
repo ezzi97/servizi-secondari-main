@@ -28,7 +28,7 @@ module.exports = async function handler(req: any, res: any) {
   // ---- GET: list services with nested child data ----
   if (req.method === 'GET') {
     const {
-      type, status, archived, dateFrom, dateTo, search,
+      type, status, archived, dateFrom, dateTo, search, vehicle,
       page = '1', pageSize = '20',
       sortBy = 'service_date', sortOrder = 'desc',
     } = req.query;
@@ -37,6 +37,9 @@ module.exports = async function handler(req: any, res: any) {
     const size = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
     const from = (pageNum - 1) * size;
     const to = from + size - 1;
+
+    // search & vehicle live in child tables, so we filter post-query
+    const needsPostFilter = !!(search || vehicle);
 
     // Nested select pulls child tables automatically (1:1 relationships)
     let query = supabase
@@ -57,7 +60,13 @@ module.exports = async function handler(req: any, res: any) {
     const validSortColumns = ['created_at', 'updated_at', 'status', 'type', 'price', 'kilometers', 'service_date'];
     const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
     query = query.order(sortCol, { ascending: sortOrder === 'asc' });
-    query = query.range(from, to);
+
+    // When post-filtering is needed, fetch all matching rows (capped) and paginate in JS
+    if (!needsPostFilter) {
+      query = query.range(from, to);
+    } else {
+      query = query.limit(2000);
+    }
 
     const { data, error, count } = await query;
 
@@ -65,8 +74,33 @@ module.exports = async function handler(req: any, res: any) {
       return res.status(500).json({ success: false, message: error.message });
     }
 
-    const items = (data || []).map(mapServiceRow);
-    const total = count || 0;
+    let items = (data || []).map(mapServiceRow);
+    let total = needsPostFilter ? items.length : (count || 0);
+
+    // Post-query filtering for search (name) and vehicle
+    if (search) {
+      const s = String(search).toLowerCase();
+      items = items.filter((item: any) =>
+        (item.patientName || '').toLowerCase().includes(s) ||
+        (item.eventNameSport || '').toLowerCase().includes(s) ||
+        (item.organizerNameSport || '').toLowerCase().includes(s)
+      );
+      total = items.length;
+    }
+
+    if (vehicle) {
+      const v = String(vehicle).toLowerCase();
+      items = items.filter((item: any) => {
+        const itemVehicle = item.vehicle || item.vehicleSport || '';
+        return itemVehicle.toLowerCase() === v;
+      });
+      total = items.length;
+    }
+
+    // Manual pagination when post-filtering
+    if (needsPostFilter) {
+      items = items.slice(from, to + 1);
+    }
 
     return res.status(200).json({
       success: true,

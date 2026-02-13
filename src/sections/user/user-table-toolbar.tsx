@@ -52,6 +52,9 @@ type Props = {
   hasActiveDateFilters?: boolean;
   onExportCsv?: () => void;
   canExportCsv?: boolean;
+  onApply?: () => void;
+  onRemoveFilter?: (key: 'status' | 'visit' | 'vehicle') => void;
+  onClearAllFilters?: () => void;
 };
 
 // Create a dark mode wrapper for the entire desktop filters section
@@ -130,6 +133,9 @@ export function UserTableToolbar({
   hasActiveDateFilters,
   onExportCsv,
   canExportCsv = true,
+  onApply,
+  onRemoveFilter,
+  onClearAllFilters,
 }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -151,10 +157,14 @@ export function UserTableToolbar({
   };
 
   const handleClearFilters = () => {
-    onFilterName({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>);
-    onFilterVisit('');
-    onFilterStatus('');
-    onFilterVehicle('');
+    if (onClearAllFilters) {
+      onClearAllFilters();
+    } else {
+      onFilterName({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>);
+      onFilterVisit('');
+      onFilterStatus('');
+      onFilterVehicle('');
+    }
     if (isMobile) handleCloseFilter();
   };
   
@@ -315,21 +325,21 @@ export function UserTableToolbar({
                   label={`Stato: ${filterStatus}`} 
                   size="small" 
                   color={getStatusChipColor(filterStatus)}
-                  onDelete={() => onFilterStatus('')}
+                  onDelete={() => onRemoveFilter ? onRemoveFilter('status') : onFilterStatus('')}
                 />
               )}
               {filterVisit && (
                 <Chip 
                   label={`Visita: ${filterVisit}`} 
                   size="small" 
-                  onDelete={() => onFilterVisit('')}
+                  onDelete={() => onRemoveFilter ? onRemoveFilter('visit') : onFilterVisit('')}
                 />
               )}
               {filterVehicle && (
                 <Chip 
                   label={`Mezzo: ${filterVehicle}`} 
                   size="small" 
-                  onDelete={() => onFilterVehicle('')}
+                  onDelete={() => onRemoveFilter ? onRemoveFilter('vehicle') : onFilterVehicle('')}
                 />
               )}
             </Stack>
@@ -438,7 +448,10 @@ export function UserTableToolbar({
                   )}
                   <Button
                     variant="contained"
-                    onClick={() => setShowAdvancedFilters(false)}
+                    onClick={() => {
+                      onApply?.();
+                      setShowAdvancedFilters(false);
+                    }}
                   >
                     Applica
                   </Button>
@@ -572,7 +585,7 @@ export function UserTableToolbar({
           <Chip 
             label={filterStatus} 
             size="small" 
-            onDelete={() => onFilterStatus('')}
+            onDelete={() => onRemoveFilter ? onRemoveFilter('status') : onFilterStatus('')}
             sx={{ m: 0.5 }}
             color={getStatusChipColor(filterStatus)}
             variant="outlined"
@@ -582,7 +595,7 @@ export function UserTableToolbar({
           <Chip 
             label={filterVisit} 
             size="small" 
-            onDelete={() => onFilterVisit('')}
+            onDelete={() => onRemoveFilter ? onRemoveFilter('visit') : onFilterVisit('')}
             sx={{ m: 0.5 }}
             color="primary"
             variant="outlined"
@@ -592,7 +605,7 @@ export function UserTableToolbar({
           <Chip 
             label={filterVehicle} 
             size="small" 
-            onDelete={() => onFilterVehicle('')}
+            onDelete={() => onRemoveFilter ? onRemoveFilter('vehicle') : onFilterVehicle('')}
             sx={{ m: 0.5 }}
             color="primary"
             variant="outlined"
@@ -707,7 +720,10 @@ export function UserTableToolbar({
               <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                   variant="contained"
-                  onClick={handleCloseFilter}
+                  onClick={() => {
+                    onApply?.();
+                    handleCloseFilter();
+                  }}
                 >
                   Applica
                 </Button>

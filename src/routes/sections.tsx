@@ -28,6 +28,8 @@ export const SportServicePage = lazy(() => import('src/pages/servizi/sportivi/nu
 export const AllServicesPage = lazy(() => import('src/pages/services'));
 export const ArchivedServicesPage = lazy(() => import('src/pages/archived-services'));
 export const AnalyticsPage = lazy(() => import('src/pages/analytics'));
+export const ImpostazioniPage = lazy(() => import('src/pages/impostazioni'));
+export const ResetPasswordPage = lazy(() => import('src/pages/reset-password'));
 
 // ----------------------------------------------------------------------
 
@@ -59,11 +61,7 @@ export function Router() {
       ),
       children: [
         { path: 'dashboard', element: <HomePage />, index: true },
-        { path: 'servizi', children: [
-          { element: <NewServicePage />, index: true },
-          { element: <SecondaryServicePage />, path: 'secondari/nuovo' },
-          { element: <SportServicePage />, path: 'sportivi/nuovo' },
-        ] },
+        { path: 'impostazioni', element: <ImpostazioniPage /> },
         { path: 'tutti-servizi', element: <AllServicesPage /> },
         { path: 'servizi-archiviati', element: <ArchivedServicesPage /> },
         { path: 'analisi', element: <AnalyticsPage /> },
@@ -93,6 +91,17 @@ export function Router() {
         { path: 'sign-up', element: <SignUpPage /> },
         { path: 'forgot-password', element: <ForgotPasswordPage /> },
       ],
+    },
+    // Password reset — no guard (user arrives via email link with token)
+    {
+      path: 'reset-password',
+      element: (
+        <AuthLayout>
+          <Suspense fallback={renderFallback}>
+            <ResetPasswordPage />
+          </Suspense>
+        </AuthLayout>
+      ),
     },
     // OAuth callback — no layout, no guard
     {

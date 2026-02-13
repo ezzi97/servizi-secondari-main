@@ -7,6 +7,7 @@ import { serviceService } from 'src/services';
 
 interface ServiceState {
   services: Service[];
+  total: number;
   currentService: Service | null;
   stats: ServiceStats | null;
   filters: ServiceFilters;
@@ -30,6 +31,7 @@ const ServiceContext = createContext<ServiceContextValue | null>(null);
 export function ServiceProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ServiceState>({
     services: [],
+    total: 0,
     currentService: null,
     stats: null,
     filters: {},
@@ -51,6 +53,7 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
       setState(prev => ({
         ...prev,
         services: response.data?.items || [],
+        total: response.data?.total ?? 0,
         filters: filters || prev.filters,
         isLoading: false,
       }));

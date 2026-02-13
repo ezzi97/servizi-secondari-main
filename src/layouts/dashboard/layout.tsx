@@ -2,11 +2,11 @@ import type { Theme, SxProps, Breakpoint } from '@mui/material/styles';
 
 import { useState } from 'react';
 
-import { IconButton } from '@mui/material';
 import Box from '@mui/material/Box';
+import { IconButton } from '@mui/material';
 import SpeedDial from '@mui/material/SpeedDial';
-import SpeedDialAction from '@mui/material/SpeedDialAction';
 import { useTheme } from '@mui/material/styles';
+import SpeedDialAction from '@mui/material/SpeedDialAction';
 
 import { useRouter } from 'src/routes/hooks';
 
@@ -112,6 +112,11 @@ export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) 
                       label: 'Dashboard',
                       href: '/dashboard',
                       icon: <Iconify width={22} icon="solar:home-angle-bold-duotone" />,
+                    },
+                    {
+                      label: 'Impostazioni',
+                      href: '/impostazioni',
+                      icon: <Iconify width={22} icon="solar:user-bold-duotone" />,
                     }
                   ]}
                 />

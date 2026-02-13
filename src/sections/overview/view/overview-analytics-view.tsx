@@ -5,9 +5,10 @@ import {
   Typography,
 } from '@mui/material';
 
-import { DashboardContent } from 'src/layouts/dashboard';
 import { useAuth } from 'src/contexts/auth-context';
+import { DashboardContent } from 'src/layouts/dashboard';
 import { useServices } from 'src/contexts/service-context';
+
 import { Iconify } from 'src/components/iconify';
 
 import { WeeklyCalendar } from '../weekly-calendar';

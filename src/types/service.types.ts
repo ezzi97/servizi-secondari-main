@@ -69,6 +69,11 @@ export interface ServiceFilters {
   dateFrom?: string;
   dateTo?: string;
   search?: string;
+  vehicle?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 // Service statistics

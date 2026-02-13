@@ -42,7 +42,7 @@ export const userService = {
 
     return {
       success: true,
-      data: result,
+      data: result.data || { avatarUrl: '' },
     };
   },
 };
