@@ -114,6 +114,7 @@ export function WeeklyCalendar() {
           pageSize: '100',
           sortBy: 'service_date',
           sortOrder: 'asc',
+          archived: false,
         } as any);
 
         if (cancelled) return;

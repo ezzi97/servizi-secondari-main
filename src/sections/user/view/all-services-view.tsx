@@ -586,7 +586,18 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
                       </tr>
                     )}
 
-                    {notFound && <TableNoData searchQuery={appliedFilters.name} />}
+                    {notFound && (
+                      <TableNoData
+                        searchQuery={
+                          appliedFilters.name ||
+                          appliedFilters.visit ||
+                          appliedFilters.status ||
+                          appliedFilters.vehicle ||
+                          (filterDateFrom ? String(filterDateFrom) : undefined) ||
+                          (filterDateTo ? String(filterDateTo) : undefined)
+                        }
+                      />
+                    )}
                   </>
                 )}
               </TableBody>

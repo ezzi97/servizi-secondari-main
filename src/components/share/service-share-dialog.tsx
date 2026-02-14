@@ -380,7 +380,6 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
     const dataUrl = await domToPng(cardRef.current, {
       scale: 3,
       backgroundColor: '#ffffff',
-      width: 500,
       style: {
         width: '500px',
         maxWidth: '500px',

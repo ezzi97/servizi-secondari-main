@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography';
 // ----------------------------------------------------------------------
 
 type TableNoDataProps = TableRowProps & {
-  searchQuery: string;
+  searchQuery?: string;
 };
 
 export function TableNoData({ searchQuery, ...other }: TableNoDataProps) {
@@ -22,7 +22,7 @@ export function TableNoData({ searchQuery, ...other }: TableNoDataProps) {
 
           <Typography variant="body2">
             Nessun risultato trovato per &nbsp;
-            <strong>&quot;{searchQuery}&quot;</strong>.
+            <strong>&quot;{searchQuery || ''}&quot;</strong>.
             <br /> Prova a ricontrollare la ricerca.
           </Typography>
         </Box>

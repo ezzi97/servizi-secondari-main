@@ -50,9 +50,9 @@ export const ICONS = {
 
 export const TRANSPORT_TYPES = ['Casa', 'RSA', 'Centro medico', 'Clinica', 'Ospedale', 'Altro'];
 export const VEHICLES = ['Auto', 'Ambulanza', 'Doblò', 'Pulmino', 'Altro'];
-export const POSITIONS = ['Seduto', 'Barella', 'Carrozzina'];
-export const EQUIPMENT = ['Ossigeno', 'Carrozzina', 'Sedia cardiopatica', 'Altro'];
-export const DIFFICULTIES = ['Scale', 'Peso', 'Spazi stretti', 'Ascensore non funzionante', 'Altro'];
+export const POSITIONS = ['seduto', 'barella', 'carrozzina', 'autosufficiente'];
+export const EQUIPMENT = ['ossigeno', 'carrozzina', 'sedia cardiopatica', 'altro'];
+export const DIFFICULTIES = ['scale', 'peso', 'spazi stretti', 'ascensore non funzionante', 'altro'];
 
 export const SERVICE_TYPES = [
   {

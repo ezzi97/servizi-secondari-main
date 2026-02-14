@@ -12,8 +12,8 @@ import { Chart, useChart } from 'src/components/chart';
 // ----------------------------------------------------------------------
 
 function getVehicle(service: Service): string {
-  if (service.type === 'secondary') return service.vehicle ?? '';
-  return service.vehicleSport ?? '';
+  if (service.type === 'secondary') return (service.vehicle ?? '').toLowerCase();
+  return (service.vehicleSport ?? '').toLowerCase();
 }
 
 type Props = {

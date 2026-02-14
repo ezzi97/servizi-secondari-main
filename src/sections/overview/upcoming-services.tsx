@@ -78,6 +78,7 @@ export function UpcomingServices() {
           sortBy: 'service_date',
           sortOrder: 'asc',
           pageSize: '10',
+          archived: false,
         } as any);
 
         if (cancelled) return;
