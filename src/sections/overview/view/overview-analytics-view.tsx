@@ -1,7 +1,10 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { 
   Grid,
+  Alert,
+  Snackbar,
   Typography,
 } from '@mui/material';
 
@@ -20,10 +23,23 @@ import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
 export function OverviewAnalyticsView() {
   const { stats, statsLoading, fetchStats } = useServices();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showVerified, setShowVerified] = useState(
+    () => searchParams.get('verified') === 'true'
+  );
 
   // Fetch stats on mount
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Clean up ?verified param from URL after reading it
+  useEffect(() => {
+    if (showVerified) {
+      searchParams.delete('verified');
+      setSearchParams(searchParams, { replace: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -33,6 +49,17 @@ export function OverviewAnalyticsView() {
 
   return (
     <DashboardContent maxWidth="xl" sx={{ pb: 15 }}>
+      <Snackbar
+        open={showVerified}
+        autoHideDuration={5000}
+        onClose={() => setShowVerified(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setShowVerified(false)}>
+          Email verificata con successo! Benvenuto su Pronto Servizi.
+        </Alert>
+      </Snackbar>
+
       <Typography variant="h4" sx={{ mb: { xs: 3, md: 5 } }}>
         {greeting}
       </Typography>

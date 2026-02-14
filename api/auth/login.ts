@@ -20,8 +20,13 @@ module.exports = async function handler(req: any, res: any) {
   const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
   if (error) {
+    if (error.code == 'email_not_confirmed') {
+      return res.status(401).json({
+        success: false,
+        message: "Email non confermata. Controlla la tua email per confermare l'account.",
+      });
+    }
     return res.status(401).json({
       success: false,
       message: 'Credenziali non valide',

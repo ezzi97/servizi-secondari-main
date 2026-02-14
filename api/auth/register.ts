@@ -26,11 +26,15 @@ module.exports = async function handler(req: any, res: any) {
 
   const supabase = getSupabaseAdmin();
 
+  // Build redirect URL for email confirmation
+  const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || 'http://localhost:3000';
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { name, role: 'user' },
+      emailRedirectTo: `${origin}/auth/callback?type=email_confirm`,
     },
   });
   
@@ -49,9 +53,15 @@ module.exports = async function handler(req: any, res: any) {
   }
 
   if (!data.user || !data.session) {
+    if (data.user?.user_metadata?.email_verified == false) {
+      return res.status(400).json({
+        success: false,
+        message: "Controlla la tua email per confermare l'account.",
+      });
+    }
     return res.status(400).json({
       success: false,
-      message: "Registrazione fallita. Controlla la tua email per confermare l'account.",
+      message: "Registrazione fallita.",
     });
   }
 

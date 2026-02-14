@@ -32,7 +32,12 @@ export default function AuthCallbackPage() {
         }
 
         await loginWithToken(accessToken);
-        router.push('/dashboard');
+
+        // Check if this callback came from email verification
+        const searchParams = new URLSearchParams(window.location.search);
+        const isEmailConfirm = searchParams.get('type') === 'email_confirm';
+
+        router.push(isEmailConfirm ? '/dashboard?verified=true' : '/dashboard');
       } catch (err: any) {
         console.error('OAuth callback error:', err);
         setError(err.message || 'Errore durante il login con Google');
