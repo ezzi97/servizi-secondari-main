@@ -43,8 +43,7 @@ export function Main({ sx, children, layoutQuery, ...other }: MainProps) {
         flexDirection: 'column',
         p: theme.spacing(3, 2, 10, 2),
         [theme.breakpoints.up(layoutQuery)]: {
-          justifyContent: 'center',
-          p: theme.spacing(10, 0, 10, 0),
+          p: theme.spacing(5, 0, 10, 0),
         },
         ...sx,
       }}

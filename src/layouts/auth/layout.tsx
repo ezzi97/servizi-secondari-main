@@ -1,5 +1,6 @@
 import type { Theme, SxProps, Breakpoint } from '@mui/material/styles';
 
+import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import { IconButton } from '@mui/material';
 
@@ -42,13 +43,13 @@ export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
             toolbar: { sx: { bgcolor: 'transparent', backdropFilter: 'unset' } },
           }}
           sx={{
-            position: { [layoutQuery]: 'fixed' },
+            position: 'relative',
 
             ...header?.sx,
           }}
           slots={{
             leftArea: (
-                <IconButton
+              <IconButton
                 onClick={toggleThemeMode}
                 sx={{
                   width: 40,
@@ -67,12 +68,20 @@ export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
               <Link
                 component={RouterLink}
                 href="#"
-                sx={{
-                  fontWeight: 600,
-                }}
+                sx={{ fontWeight: 600 }}
               >
                 Hai bisogno di aiuto?
               </Link>
+            ),
+            bottomArea: (
+              <Box sx={{ display: 'flex', justifyContent: 'center', pb: 0 }}>
+                <Box
+                  component="img"
+                  alt="Pronto Servizi"
+                  src="/logo/main_logo.png"
+                  sx={{ width: 200, objectFit: 'contain' }}
+                />
+              </Box>
             ),
           }}
         />

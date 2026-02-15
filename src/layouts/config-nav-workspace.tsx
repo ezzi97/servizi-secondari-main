@@ -3,7 +3,8 @@
 export const _workspaces = [
   {
     id: 'team-1',
-    name: 'Servizi Secondari & Sportivi',
-    logo: `/assets/icons/workspaces/logo-1.webp`
+    name: "Pronto Servizi",
+    logoLight: '/logo/logo_light.png',
+    logoDark: '/logo/logo_light.png',
   }
 ];
