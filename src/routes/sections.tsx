@@ -16,6 +16,7 @@ import { EditSportServiceView, EditSecondaryServiceView } from 'src/sections/ser
 // ----------------------------------------------------------------------
 
 export const HomePage = lazy(() => import('src/pages/home'));
+export const LandingPage = lazy(() => import('src/pages/landing'));
 export const UserPage = lazy(() => import('src/pages/services'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
 export const SignUpPage = lazy(() => import('src/pages/sign-up'));
@@ -77,6 +78,17 @@ export function Router() {
         },
       ],
     },
+    // Public route — landing page (redirect to dashboard if already logged in)
+    {
+      element: (
+        <GuestGuard>
+          <Suspense fallback={renderFallback}>
+            <Outlet />
+          </Suspense>
+        </GuestGuard>
+      ),
+      children: [{ path: '/', element: <LandingPage /> }],
+    },
     // Public routes — login, register, forgot password (redirect to dashboard if already logged in)
     {
       element: (
@@ -89,7 +101,7 @@ export function Router() {
         </GuestGuard>
       ),
       children: [
-        { path: '/', element: <SignInPage /> },
+        { path: 'sign-in', element: <SignInPage /> },
         { path: 'sign-up', element: <SignUpPage /> },
         { path: 'forgot-password', element: <ForgotPasswordPage /> },
       ],

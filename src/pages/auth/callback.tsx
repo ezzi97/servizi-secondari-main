@@ -42,7 +42,7 @@ export default function AuthCallbackPage() {
         console.error('OAuth callback error:', err);
         setError(err.message || 'Errore durante il login con Google');
         // Redirect to login after a delay
-        setTimeout(() => router.push('/'), 3000);
+        setTimeout(() => router.push('/sign-in'), 3000);
       }
     };
 

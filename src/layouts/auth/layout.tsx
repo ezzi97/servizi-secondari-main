@@ -4,8 +4,6 @@ import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import { IconButton } from '@mui/material';
 
-import { RouterLink } from 'src/routes/components';
-
 import { useAppTheme } from 'src/hooks/use-theme-mode';
 
 import { stylesMode } from 'src/theme/styles';
@@ -66,8 +64,7 @@ export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
             ),
             rightArea: (
               <Link
-                component={RouterLink}
-                href="#"
+                href="mailto:ezeddin.eddaouy@gmail.com"
                 sx={{ fontWeight: 600 }}
               >
                 Hai bisogno di aiuto?

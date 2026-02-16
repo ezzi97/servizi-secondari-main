@@ -105,7 +105,7 @@ export default function ResetPasswordView() {
 
           <Link
             component={RouterLink}
-            href="/"
+            href="/sign-in"
             color="inherit"
             variant="subtitle2"
           >
@@ -129,7 +129,7 @@ export default function ResetPasswordView() {
 
         <Link
           component={RouterLink}
-          href="/"
+          href="/sign-in"
           color="inherit"
           variant="subtitle2"
           sx={{
@@ -211,7 +211,7 @@ export default function ResetPasswordView() {
 
         <Link
           component={RouterLink}
-          href="/"
+          href="/sign-in"
           color="inherit"
           variant="subtitle2"
           sx={{

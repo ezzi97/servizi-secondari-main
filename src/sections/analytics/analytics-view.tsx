@@ -90,13 +90,22 @@ export function AnalyticsView() {
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [chartsLoading, setChartsLoading] = useState(true);
 
+  // Default date range: last 3 months
+  const [defaultFrom] = useState<Date>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 3);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [defaultTo] = useState<Date>(() => new Date());
+
   // ---- Pending date state (what the user edits in the popover) ----
-  const [filterDateFrom, setFilterDateFrom] = useState<Date | null>(null);
-  const [filterDateTo, setFilterDateTo] = useState<Date | null>(null);
+  const [filterDateFrom, setFilterDateFrom] = useState<Date | null>(defaultFrom);
+  const [filterDateTo, setFilterDateTo] = useState<Date | null>(defaultTo);
 
   // ---- Applied date state (what actually drives the data) ----
-  const [appliedDateFrom, setAppliedDateFrom] = useState<Date | null>(null);
-  const [appliedDateTo, setAppliedDateTo] = useState<Date | null>(null);
+  const [appliedDateFrom, setAppliedDateFrom] = useState<Date | null>(defaultFrom);
+  const [appliedDateTo, setAppliedDateTo] = useState<Date | null>(defaultTo);
 
   const [dateAnchorEl, setDateAnchorEl] = useState<HTMLElement | null>(null);
   const openDateFilter = Boolean(dateAnchorEl);
@@ -217,11 +226,18 @@ export function AnalyticsView() {
 
     async function loadServicesForAnalytics() {
       try {
-        const baseFilters = {
+        const baseFilters: Record<string, string> = {
           pageSize: '100',
           sortBy: 'created_at',
           sortOrder: 'asc',
         };
+
+        if (appliedDateFrom) {
+          baseFilters.dateFrom = format(appliedDateFrom, 'yyyy-MM-dd');
+        }
+        if (appliedDateTo) {
+          baseFilters.dateTo = format(appliedDateTo, 'yyyy-MM-dd');
+        }
 
         const firstPageResponse = await serviceService.getServices({
           ...baseFilters,
@@ -266,7 +282,7 @@ export function AnalyticsView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [appliedDateFrom, appliedDateTo]);
 
   const formatCurrency = (v: number) =>
     `${v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;

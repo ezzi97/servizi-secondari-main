@@ -17,7 +17,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/sign-in" replace />;
   }
 
   return <>{children}</>;

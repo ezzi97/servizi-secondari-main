@@ -117,7 +117,7 @@ export default function ForgotPasswordView() {
 
         <Link
           component={RouterLink}
-          href="/"
+          href="/sign-in"
           color="inherit"
           variant="subtitle2"
           sx={{

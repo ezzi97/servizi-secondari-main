@@ -43,7 +43,7 @@ export default function SignUpView() {
         setCountdown((prev) => prev - 1);
       }, 1000);
     } else if (registrationSuccess && countdown === 0) {
-      router.push('/');
+      router.push('/sign-in');
     }
     return () => clearTimeout(timer);
   }, [registrationSuccess, countdown, router]);
@@ -175,7 +175,7 @@ export default function SignUpView() {
           <Stack direction="row" spacing={0.5}>
             <Typography variant="body2">Hai già un account?</Typography>
 
-            <Link component={RouterLink} href="/" variant="subtitle2">
+            <Link component={RouterLink} href="/sign-in" variant="subtitle2">
               Accedi
             </Link>
           </Stack>
