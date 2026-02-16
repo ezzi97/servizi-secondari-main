@@ -496,8 +496,37 @@ export default function LandingPage() {
               </Stack>
 
               <Grid container spacing={3}>
-                {SCREENSHOTS.map((screen, idx) => (
-                  <Grid key={screen.title} item xs={12} md={idx === 0 ? 12 : 6}>
+                {/* Video demo – full width */}
+                <Grid item xs={12}>
+                  <BrowserFrame>
+                    <Box
+                      component="video"
+                      controls
+                      controlsList="nodownload"
+                      disablePictureInPicture
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
+                      src="https://emkizlshogvxtlelizic.supabase.co/storage/v1/object/public/public-assets/demo_pronto_servizi_1.mp4"
+                      sx={{
+                        width: '100%',
+                        display: 'block',
+                      }}
+                    />
+                  </BrowserFrame>
+                  <Stack spacing={0.5} sx={{ mt: 2, px: 0.5 }}>
+                    <Typography variant="subtitle1">Dashboard operativa</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Panoramica immediata su servizi, calendario e prossime attività.
+                    </Typography>
+                  </Stack>
+                </Grid>
+
+                {/* Remaining screenshots */}
+                {SCREENSHOTS.slice(1).map((screen) => (
+                  <Grid key={screen.title} item xs={12} md={6}>
                     <BrowserFrame>
                       <Box
                         component="img"
