@@ -75,19 +75,19 @@ const SCREENSHOTS = [
   {
     title: 'Dashboard operativa',
     description: 'Panoramica immediata su servizi, calendario e prossime attività.',
-    src: '/supabase/assets/landing_page/screen_1.png',
+    src: '/assets/landing_page/screen_1.png',
     position: 'center top',
   },
   {
     title: 'Analisi avanzata',
     description: 'Metriche e grafici per controllare andamento, ricavi e trend.',
-    src: '/supabase/assets/landing_page/screen_2.png',
+    src: '/assets/landing_page/screen_2.png',
     position: 'center top',
   },
   {
     title: 'Gestione elenco servizi',
     description: 'Ricerca, filtri e azioni rapide per lavorare in modo efficiente.',
-    src: '/supabase/assets/landing_page/screen_3.png',
+    src: '/assets/landing_page/screen_3.png',
     position: 'center top',
   },
 ];
@@ -310,7 +310,7 @@ export default function LandingPage() {
                     <Box
                       component="img"
                       alt="Dashboard Pronto Servizi"
-                      src="/supabase/assets/landing_page/screen_1.png"
+                      src="/assets/landing_page/screen_1.png"
                       sx={{
                         width: '100%',
                         display: 'block',
