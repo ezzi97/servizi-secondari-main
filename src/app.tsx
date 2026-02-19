@@ -3,6 +3,7 @@ import 'src/index.css';
 import { Suspense } from 'react';
 
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
@@ -31,6 +32,7 @@ export default function App() {
                   <Router />
                 </Suspense>
                 <Analytics />
+                <SpeedInsights />
               </UIProvider>
             </ServiceProvider>
           </AuthProvider>
