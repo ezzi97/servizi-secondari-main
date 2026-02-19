@@ -668,7 +668,7 @@ export default function LandingPage() {
                       Registrati
                     </Link>
                     <Link
-                      href="mailto:ezeddin.eddaouy@gmail.com"
+                      href="mailto:support@prontoservizi.app"
                       variant="body2"
                       color="text.secondary"
                       underline="hover"

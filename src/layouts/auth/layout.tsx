@@ -64,7 +64,7 @@ export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
             ),
             rightArea: (
               <Link
-                href="mailto:ezeddin.eddaouy@gmail.com"
+                href="mailto:support@prontoservizi.app"
                 sx={{ fontWeight: 600 }}
               >
                 Hai bisogno di aiuto?
