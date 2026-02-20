@@ -4,6 +4,8 @@ import { useParams } from 'react-router-dom';
 
 import { Box, Alert, Stack, Typography, CircularProgress } from '@mui/material';
 
+import { track } from '@vercel/analytics';
+
 import { useRouter } from 'src/routes/hooks';
 
 import { useToast } from 'src/hooks/use-toast';
@@ -70,6 +72,7 @@ export function EditSportServiceView() {
         throw new Error(response.message || 'Errore nell\'aggiornamento');
       }
 
+      track('Service Edited', { type: 'sport', service_id: id ?? '' });
       showSuccess('Servizio aggiornato con successo');
       router.push('/tutti-servizi');
     } catch (exception: any) {

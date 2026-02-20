@@ -5,6 +5,8 @@ import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
+import { track } from '@vercel/analytics';
+
 import { useRouter } from 'src/routes/hooks';
 
 import { useAuth } from 'src/contexts/auth-context';
@@ -33,10 +35,10 @@ export default function AuthCallbackPage() {
 
         await loginWithToken(accessToken);
 
-        // Check if this callback came from email verification
         const searchParams = new URLSearchParams(window.location.search);
         const isEmailConfirm = searchParams.get('type') === 'email_confirm';
 
+        track('Sign In', { method: 'google', email_verified: isEmailConfirm });
         router.push(isEmailConfirm ? '/dashboard?verified=true' : '/dashboard');
       } catch (err: any) {
         console.error('OAuth callback error:', err);

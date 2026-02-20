@@ -1,7 +1,8 @@
 import * as Yup from 'yup';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { useSearchParams } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
@@ -17,6 +18,8 @@ import { RouterLink } from 'src/routes/components';
 
 import { useAppTheme } from 'src/hooks/use-theme-mode';
 
+import { track } from '@vercel/analytics';
+
 import { useAuth } from 'src/contexts/auth-context';
 
 import { Iconify } from 'src/components/iconify';
@@ -26,11 +29,24 @@ import { FormProvider, RHFTextField } from 'src/components/hook-form';
 
 export function SignInView() {
   const router = useRouter();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { mode } = useAppTheme();
   const { login, loginWithGoogle } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [showSessionExpiredMessage, setShowSessionExpiredMessage] = useState(
+    () => searchParams.get('session_expired') === '1'
+  );
+
+  // Remove session_expired from URL after reading (keeps URL clean)
+  useEffect(() => {
+    if (showSessionExpiredMessage) {
+      searchParams.delete('session_expired');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const LoginSchema = Yup.object().shape({
     email: Yup.string()
@@ -58,6 +74,7 @@ export function SignInView() {
     try {
       setError('');
       await login(data.email, data.password);
+      track('Sign In', { method: 'email' });
       router.push('/dashboard');
     } catch (exception: any) {
       console.error(exception);
@@ -67,15 +84,15 @@ export function SignInView() {
 
   const renderForm = (
     <Box display="flex" flexDirection="column" alignItems="flex-end">
-      <RHFTextField 
-        name="email" 
-        label="Email" 
-        placeholder="hello@gmail.com"
+      <RHFTextField
+        name="email"
+        label="Email"
+        placeholder="esempio@email.com"
       />
 
-      <Link 
-        variant="body2" 
-        color="inherit" 
+      <Link
+        variant="body2"
+        color="inherit"
         component={RouterLink}
         href="/forgot-password"
         sx={{ mb: 1.5, mt: 1 }}
@@ -130,6 +147,12 @@ export function SignInView() {
         </Typography>
       </Box>
 
+      {showSessionExpiredMessage && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          La tua sessione è scaduta. Effettua nuovamente l&apos;accesso.
+        </Alert>
+      )}
+
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
@@ -150,6 +173,7 @@ export function SignInView() {
           onClick={async () => {
             try {
               setError('');
+              track('Sign In Click', { method: 'google' });
               await loginWithGoogle();
             } catch (e: any) {
               setError(e.message || 'Errore login con Google');

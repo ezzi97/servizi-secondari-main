@@ -14,7 +14,7 @@ Web application for Italian volunteering associations to manage transport and ev
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - A [Supabase](https://supabase.com) project
 - A [Vercel](https://vercel.com) account (for deployment)
 

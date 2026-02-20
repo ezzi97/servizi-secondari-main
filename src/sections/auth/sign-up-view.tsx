@@ -18,6 +18,8 @@ import { RouterLink } from 'src/routes/components';
 
 import { useAppTheme } from 'src/hooks/use-theme-mode';
 
+import { track } from '@vercel/analytics';
+
 import { useAuth } from 'src/contexts/auth-context';
 
 import { Iconify } from 'src/components/iconify';
@@ -96,7 +98,8 @@ export default function SignUpView() {
 
       const fullName = `${data.firstName} ${data.lastName}`;
       await registerUser(data.email, data.password, fullName);
-      
+
+      track('Sign Up');
       setRegistrationSuccess(true);
       setCountdown(5);
       reset();

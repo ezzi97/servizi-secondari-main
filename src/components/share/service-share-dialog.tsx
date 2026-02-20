@@ -19,6 +19,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme, createTheme, ThemeProvider } from '@mui/material/styles';
 
+import { track } from '@vercel/analytics';
+
 import { Iconify } from 'src/components/iconify';
 
 import { mapServiceType } from 'src/sections/service/constants';
@@ -428,6 +430,8 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
       const payload = await createImagePayload();
       if (!payload) return;
 
+      track('Service Shared', { method: 'image', service_id: serviceData.id ?? '' });
+
       // Fallback for browsers that block "download" on mobile Safari.
       const blobUrl = URL.createObjectURL(payload.blob);
 
@@ -484,6 +488,7 @@ export default function ServiceShareDialog({ open, onClose, serviceData }: Servi
 
   // ---- Share via WhatsApp ----
   const handleShareViaWhatsApp = () => {
+    track('Service Shared', { method: 'whatsapp', service_id: serviceData.id ?? '' });
     const message = buildWhatsAppText();
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     onClose();

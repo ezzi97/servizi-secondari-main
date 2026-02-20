@@ -87,6 +87,17 @@ export function fShortenNumber(inputValue: InputNumberValue, options?: Options) 
 
 // ----------------------------------------------------------------------
 
+/**
+ * Percent change from previous to current: ((current - previous) / previous) * 100.
+ * Returns undefined when previous is 0 (no meaningful trend).
+ */
+export function percentChange(current: number, previous: number): number | undefined {
+  if (previous === 0) return undefined;
+  return ((current - previous) / previous) * 100;
+}
+
+// ----------------------------------------------------------------------
+
 export function fData(inputValue: InputNumberValue) {
   const number = processInput(inputValue);
   if (number === null || number === 0) return '0 bytes';

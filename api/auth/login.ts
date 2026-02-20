@@ -39,6 +39,14 @@ module.exports = async function handler(req: any, res: any) {
     .eq('id', data.user.id)
     .single();
 
+  const meta = data.user.user_metadata || {};
+  const name =
+    (profile?.name && profile.name.trim()) ||
+    meta.name ||
+    meta.full_name ||
+    meta.given_name ||
+    '';
+
   return res.status(200).json({
     success: true,
     data: {
@@ -46,7 +54,7 @@ module.exports = async function handler(req: any, res: any) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        name: profile?.name || '',
+        name: name.trim() || '',
         role: profile?.role || 'user',
         phone: profile?.phone || '',
         address: profile?.address || '',

@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 
 import { useMemo, useState, useEffect, useContext, useCallback, createContext } from 'react';
 
+import { track } from '@vercel/analytics';
+
 import { authService } from 'src/services';
 
 interface AuthState {
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
         } catch {
-          // Token verification failed
+          // Token verification failed — clear stored data and redirect to sign-in
           localStorage.removeItem(TOKEN_KEY);
           localStorage.removeItem(USER_KEY);
           setState({
@@ -67,12 +69,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: false,
             isLoading: false,
           });
+          track('Session Expired');
+          window.location.replace('/sign-in?session_expired=1');
           return;
         }
 
-        // Verification failed or unauthorized — clear stored data and log out
+        // Verification failed or unauthorized — clear stored data and redirect to sign-in
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        setState({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+        track('Session Expired');
+        window.location.replace('/sign-in?session_expired=1');
+        return;
       }
 
       setState(prev => ({ ...prev, isLoading: false }));
@@ -97,6 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
 
     setState({
       user,
@@ -149,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    track('Logout');
     await authService.logout();
 
     setState({

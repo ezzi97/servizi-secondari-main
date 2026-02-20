@@ -58,7 +58,7 @@ export function SimpleLayout({ sx, children, header, content }: SimpleLayoutProp
             ),
             rightArea: (
               <Link
-                href="#"
+                href="mailto:support@prontoservizi.app"
                 component={RouterLink}
                 sx={{
                     fontWeight: 600,

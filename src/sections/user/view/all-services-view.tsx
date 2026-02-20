@@ -2,6 +2,8 @@ import { format } from 'date-fns';
 import it from 'date-fns/locale/it';
 import { useRef, useState, useEffect, useCallback } from 'react';
 
+import { track } from '@vercel/analytics';
+
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Card from '@mui/material/Card';
@@ -251,6 +253,12 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
     fetchWithFilters();
   }, [fetchWithFilters]);
 
+  // Track services page view
+  useEffect(() => {
+    track('Services View', { mode });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ---- "Applica" handler: copy pending → applied ----
   const handleApplyFilters = useCallback(() => {
     setAppliedFilters({
@@ -261,8 +269,17 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
       dateFrom: filterDateFrom,
       dateTo: filterDateTo,
     });
+    const filterCount = [
+      filterName,
+      filterVisit,
+      filterStatus,
+      filterVehicle,
+      filterDateFrom,
+      filterDateTo,
+    ].filter(Boolean).length;
+    track('Services Filter Applied', { mode, filter_count: filterCount });
     table.onResetPage();
-  }, [filterName, filterVisit, filterStatus, filterVehicle, filterDateFrom, filterDateTo, table]);
+  }, [filterName, filterVisit, filterStatus, filterVehicle, filterDateFrom, filterDateTo, table, mode]);
 
   // Remove a single filter chip and immediately refetch
   const handleRemoveFilter = useCallback((key: 'status' | 'visit' | 'vehicle') => {
@@ -282,8 +299,9 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
     setFilterDateFrom(null);
     setFilterDateTo(null);
     setAppliedFilters({ name: '', visit: '', status: '', vehicle: '', dateFrom: null, dateTo: null });
+    track('Services Filter Cleared', { mode });
     table.onResetPage();
-  }, [table]);
+  }, [table, mode]);
 
   // Remove date filter and refetch
   const handleRemoveDateFilter = useCallback(() => {
@@ -343,6 +361,7 @@ export function AllServicesView({ mode = 'active' }: AllServicesViewProps) {
   };
 
   const handleExportCsv = () => {
+    track('Services Export CSV', { mode });
     const headers = [
       'Nome',
       'Tipo',

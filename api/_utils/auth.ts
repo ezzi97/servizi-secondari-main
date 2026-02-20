@@ -28,10 +28,18 @@ async function getAuthUser(req: any): Promise<AuthUser | null> {
     .eq('id', user.id)
     .single();
 
+  const meta = user.user_metadata || {};
+  const name =
+    profile?.name ||
+    meta.name ||
+    meta.full_name ||
+    meta.given_name ||
+    '';
+
   return {
     id: user.id,
     email: user.email || '',
-    name: profile?.name || '',
+    name: name.trim() || '',
     role: profile?.role || 'user',
   };
 }

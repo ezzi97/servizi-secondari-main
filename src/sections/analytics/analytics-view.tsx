@@ -1,4 +1,4 @@
-import type { Service } from 'src/types';
+import type { Service, ServiceStats } from 'src/types';
 
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -18,9 +18,12 @@ import {
   Typography,
 } from '@mui/material';
 
+import { track } from '@vercel/analytics';
+
 import { serviceService } from 'src/services';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useServices } from 'src/contexts/service-context';
+import { percentChange } from 'src/utils/format-number';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -29,6 +32,8 @@ import { MonthlyRevenueChart } from 'src/sections/analytics/monthly-revenue-char
 import { MonthlyServicesChart } from 'src/sections/overview/monthly-services-chart';
 import { AnalyticsWidgetSummary } from 'src/sections/overview/analytics-widget-summary';
 import { VehicleUtilizationChart } from 'src/sections/analytics/vehicle-utilization-chart';
+import { RevenueByTypeChart } from 'src/sections/analytics/revenue-by-type-chart';
+import { TopVehiclesByKmChart } from 'src/sections/analytics/top-vehicles-by-km-chart';
 
 // ----------------------------------------------------------------------
 
@@ -108,6 +113,8 @@ export function AnalyticsView() {
   const [appliedDateTo, setAppliedDateTo] = useState<Date | null>(defaultTo);
 
   const [dateAnchorEl, setDateAnchorEl] = useState<HTMLElement | null>(null);
+  const [previousStats, setPreviousStats] = useState<ServiceStats | null>(null);
+  const [previousStatsLoading, setPreviousStatsLoading] = useState(false);
   const openDateFilter = Boolean(dateAnchorEl);
   const hasActiveDateFilters = filterDateFrom || filterDateTo;
   const hasAppliedDateFilters = appliedDateFrom || appliedDateTo;
@@ -121,6 +128,12 @@ export function AnalyticsView() {
   const handleApplyDateFilters = () => {
     setAppliedDateFrom(filterDateFrom);
     setAppliedDateTo(filterDateTo);
+    if (filterDateFrom && filterDateTo) {
+      track('Analytics Date Filter Applied', {
+        date_from: format(filterDateFrom, 'yyyy-MM-dd'),
+        date_to: format(filterDateTo, 'yyyy-MM-dd'),
+      });
+    }
     handleCloseDateFilter();
   };
   const handleClearDateFilters = () => {
@@ -128,6 +141,7 @@ export function AnalyticsView() {
     setFilterDateTo(null);
     setAppliedDateFrom(null);
     setAppliedDateTo(null);
+    track('Analytics Date Filter Cleared');
     handleCloseDateFilter();
   };
   const handleRemoveDateChip = () => {
@@ -135,6 +149,7 @@ export function AnalyticsView() {
     setFilterDateTo(null);
     setAppliedDateFrom(null);
     setAppliedDateTo(null);
+    track('Analytics Date Filter Cleared');
   };
   const formatDateLabel = (date: Date) => format(date, 'dd MMM yyyy', { locale: it });
   const applyDatePreset = (preset: typeof DATE_PRESETS[number]) => {
@@ -215,10 +230,69 @@ export function AnalyticsView() {
 
   const activeStats = appliedDateFrom || appliedDateTo ? localStats : stats;
 
+  // Track analytics page view
+  useEffect(() => {
+    track('Analytics View');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Compared period label (previous period, same length ending day before current) for display
+  const comparedPeriodLabel = useMemo(() => {
+    if (!appliedDateFrom || !appliedDateTo) return null;
+    const from = new Date(appliedDateFrom);
+    const to = new Date(appliedDateTo);
+    const lengthMs = to.getTime() - from.getTime();
+    const prevTo = new Date(from);
+    prevTo.setDate(prevTo.getDate() - 1);
+    const prevFrom = new Date(prevTo.getTime() - lengthMs);
+    const sameDay = prevFrom.getTime() === prevTo.getTime();
+    return sameDay
+      ? formatDateLabel(prevFrom)
+      : `${formatDateLabel(prevFrom)} – ${formatDateLabel(prevTo)}`;
+  }, [appliedDateFrom, appliedDateTo]);
+
   useEffect(() => {
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch previous period stats (same length as current, ending day before current) for trend
+  useEffect(() => {
+    if (!appliedDateFrom || !appliedDateTo) {
+      setPreviousStats(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setPreviousStatsLoading(true);
+
+    const from = new Date(appliedDateFrom);
+    const to = new Date(appliedDateTo);
+    const lengthMs = to.getTime() - from.getTime();
+    const prevTo = new Date(from);
+    prevTo.setDate(prevTo.getDate() - 1);
+    const prevFrom = new Date(prevTo.getTime() - lengthMs);
+
+    serviceService
+      .getStats({
+        dateFrom: format(prevFrom, 'yyyy-MM-dd'),
+        dateTo: format(prevTo, 'yyyy-MM-dd'),
+      })
+      .then((res) => {
+        if (!cancelled && res.success && res.data) {
+          setPreviousStats(res.data);
+        } else if (!cancelled) {
+          setPreviousStats(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPreviousStatsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appliedDateFrom, appliedDateTo]);
 
   useEffect(() => {
     let cancelled = false;
@@ -325,7 +399,7 @@ export function AnalyticsView() {
       </Stack>
 
       {hasAppliedDateFilters && (
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} flexWrap="wrap">
           <Chip
             size="small"
             color="primary"
@@ -341,6 +415,11 @@ export function AnalyticsView() {
                   : `A: ${formatDateLabel(appliedDateTo!)}`
             }
           />
+          {comparedPeriodLabel && (
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+              Confronto con: {comparedPeriodLabel}
+            </Typography>
+          )}
         </Stack>
       )}
 
@@ -415,13 +494,21 @@ export function AnalyticsView() {
         </LocalizationProvider>
       </Popover>
 
-      {/* Row 1: Revenue + key stats */}
+      {/* Row 1: Revenue + key stats (trend vs previous period when date range applied) */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={6} sm={6} md={3}>
           <AnalyticsWidgetSummary
             title="Ricavi totali"
             total={activeStats?.totalRevenue ?? 0}
-            loading={statsLoading}
+            percent={
+              hasAppliedDateFilters && previousStats != null
+                ? percentChange(
+                    activeStats?.totalRevenue ?? 0,
+                    previousStats.totalRevenue ?? 0
+                  )
+                : undefined
+            }
+            loading={hasAppliedDateFilters ? chartsLoading : statsLoading}
             color="success"
             formatTotal={formatCurrency}
             icon={<img alt="icon" src="/assets/icons/glass/ic-glass-buy.svg" />}
@@ -433,7 +520,15 @@ export function AnalyticsView() {
           <AnalyticsWidgetSummary
             title="Prezzo medio"
             total={activeStats?.averagePrice ?? 0}
-            loading={statsLoading}
+            percent={
+              hasAppliedDateFilters && previousStats != null
+                ? percentChange(
+                    activeStats?.averagePrice ?? 0,
+                    previousStats.averagePrice ?? 0
+                  )
+                : undefined
+            }
+            loading={hasAppliedDateFilters ? chartsLoading : statsLoading}
             color="primary"
             formatTotal={formatCurrency}
             icon={<img alt="icon" src="/assets/icons/glass/ic-glass-bag.svg" />}
@@ -445,7 +540,15 @@ export function AnalyticsView() {
           <AnalyticsWidgetSummary
             title="Cancellati"
             total={activeStats?.cancelled ?? 0}
-            loading={statsLoading}
+            percent={
+              hasAppliedDateFilters && previousStats != null
+                ? percentChange(
+                    activeStats?.cancelled ?? 0,
+                    previousStats.cancelled ?? 0
+                  )
+                : undefined
+            }
+            loading={hasAppliedDateFilters ? chartsLoading : statsLoading}
             color="error"
             icon={<img alt="icon" src="/assets/icons/glass/ic-glass-message.svg" />}
             sx={{ height: '100%' }}
@@ -456,7 +559,12 @@ export function AnalyticsView() {
           <AnalyticsWidgetSummary
             title="Totale servizi"
             total={activeStats?.total ?? 0}
-            loading={statsLoading}
+            percent={
+              hasAppliedDateFilters && previousStats != null
+                ? percentChange(activeStats?.total ?? 0, previousStats.total ?? 0)
+                : undefined
+            }
+            loading={hasAppliedDateFilters ? chartsLoading : statsLoading}
             color="warning"
             icon={<img alt="icon" src="/assets/icons/glass/ic-glass-users.svg" />}
             sx={{ height: '100%' }}
@@ -493,6 +601,16 @@ export function AnalyticsView() {
         </Grid>
         <Grid item xs={12} md={6}>
           <VehicleUtilizationChart services={services} loading={chartsLoading} />
+        </Grid>
+      </Grid>
+
+      {/* Row 4: Revenue by type + Top vehicles by km */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <RevenueByTypeChart services={services} loading={chartsLoading} />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <TopVehiclesByKmChart services={services} loading={chartsLoading} />
         </Grid>
       </Grid>
     </DashboardContent>

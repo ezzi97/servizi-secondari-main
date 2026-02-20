@@ -40,7 +40,7 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  const displayName = user?.name || '';
+  const displayName = (user?.name && user.name.trim()) || user?.email || 'Utente';
   const email = user?.email || '';
   const avatarUrl = (user as any)?.avatarUrl || '';
 

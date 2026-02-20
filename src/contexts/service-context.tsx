@@ -3,6 +3,8 @@ import type { Service, ServiceStats, ServiceFilters } from 'src/types';
 
 import { useMemo, useState, useContext, useCallback, createContext } from 'react';
 
+import { track } from '@vercel/analytics';
+
 import { serviceService } from 'src/services';
 
 interface ServiceState {
@@ -117,6 +119,8 @@ export function ServiceProvider({ children }: { children: ReactNode }) {
       }
 
       const newService = response.data;
+
+      track('Service Created', { type: data.type ?? 'unknown' });
 
       setState(prev => ({
         ...prev,

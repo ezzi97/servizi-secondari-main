@@ -43,8 +43,9 @@ export function OverviewAnalyticsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Personalized greeting
-  const firstName = user?.name?.split(' ')[0] || '';
+  // Personalized greeting (fallback to email prefix or "Ciao" if no name)
+  const namePart = (user?.name && user.name.trim()) || user?.email?.split('@')[0] || '';
+  const firstName = namePart.split(' ')[0] || '';
   const greeting = firstName ? `Ciao, ${firstName}!` : 'Ciao!';
 
   return (

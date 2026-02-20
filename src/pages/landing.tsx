@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { track } from '@vercel/analytics';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -107,7 +108,17 @@ const FAQS = [
     question: 'Come accedo alla piattaforma?',
     answer:
       'Puoi creare un account dalla pagina di registrazione oppure accedere con le credenziali esistenti.',
-  }
+  },
+  {
+    question: 'I dati sono al sicuro?',
+    answer:
+      'Sì. I dati sono protetti e conservati in modo sicuro; puoi gestire permessi e accessi dal tuo account.',
+  },
+  {
+    question: 'Posso esportare i dati?',
+    answer:
+      'Sì. Puoi esportare elenchi e report per backup o per usarli in altri strumenti.',
+  },
 ];
 
 // ----------------------------------------------------------------------
@@ -169,14 +180,54 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const seoTitle = CONFIG.appName;
+  const seoDescription =
+    'Piattaforma completa per gestire servizi secondari e sportivi con pianificazione, dashboard e analisi.';
+  const canonicalUrl = `${CONFIG.siteUrl}/`;
+  const ogImageUrl = `${CONFIG.siteUrl}/logo/main_logo.png`;
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: CONFIG.appName,
+        url: CONFIG.siteUrl,
+        description: seoDescription,
+        logo: ogImageUrl,
+      },
+      {
+        '@type': 'WebApplication',
+        name: CONFIG.appName,
+        url: CONFIG.siteUrl,
+        description: seoDescription,
+        applicationCategory: 'BusinessApplication',
+      },
+    ],
+  };
+
   return (
     <>
       <Helmet>
-        <title>{`Pronto Servizi - ${CONFIG.appName}`}</title>
-        <meta
-          name="description"
-          content="Piattaforma completa per gestire servizi secondari e sportivi con pianificazione, dashboard e analisi."
-        />
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDescription} />
+        <link rel="canonical" href={canonicalUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:title" content={seoTitle} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:image" content={ogImageUrl} />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDescription} />
+        <meta name="twitter:image" content={ogImageUrl} />
+
+        {/* JSON-LD structured data */}
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
       {/* ---- Sticky Navbar ---- */}
@@ -225,6 +276,7 @@ export default function LandingPage() {
                 component={RouterLink}
                 href="/sign-in"
                 variant="outlined"
+                onClick={() => track('Landing CTA Click', { cta: 'accedi', section: 'navbar' })}
                 sx={{ fontSize: { xs: 13, md: 14 }, px: { xs: 1.5, md: 2 }, py: { xs: 0.5, md: 0.75 } }}
               >
                 Accedi
@@ -233,6 +285,7 @@ export default function LandingPage() {
                 component={RouterLink}
                 href="/sign-up"
                 variant="contained"
+                onClick={() => track('Landing CTA Click', { cta: 'crea_account', section: 'navbar' })}
                 sx={{ fontSize: { xs: 13, md: 14 }, px: { xs: 1.5, md: 2 }, py: { xs: 0.5, md: 0.75 } }}
               >
                 Crea account
@@ -277,7 +330,10 @@ export default function LandingPage() {
                     >
                       Pronto Servizi
                     </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 500 }}>
+                    <Typography variant="h5" color="primary.main" sx={{ fontWeight: 600 }}>
+                      Pianifica, coordina e analizza i tuoi servizi in un unico posto
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500 }}>
                       Gestisci servizi secondari e sportivi in modo moderno, veloce e affidabile
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
@@ -290,6 +346,7 @@ export default function LandingPage() {
                         href="/sign-in"
                         variant="contained"
                         size="large"
+                        onClick={() => track('Landing CTA Click', { cta: 'accedi', section: 'hero' })}
                       >
                         Accedi
                       </Button>
@@ -298,10 +355,14 @@ export default function LandingPage() {
                         href="/sign-up"
                         variant="outlined"
                         size="large"
+                        onClick={() => track('Landing CTA Click', { cta: 'crea_account', section: 'hero' })}
                       >
                         Crea account
                       </Button>
                     </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      Usato da associazioni di volontariato in tutta Italia
+                    </Typography>
                   </Stack>
                 </Grid>
 
@@ -607,7 +668,7 @@ export default function LandingPage() {
                     color="text.secondary"
                     sx={{ maxWidth: 760 }}
                   >
-                    Inizia ora con Pronto Servizi e porta organizzazione, visibilita e controllo
+                    Inizia ora con Pronto Servizi e porta organizzazione, visibilità e controllo
                     nel flusso operativo quotidiano.
                   </Typography>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -616,6 +677,7 @@ export default function LandingPage() {
                       href="/sign-up"
                       variant="contained"
                       size="large"
+                      onClick={() => track('Landing CTA Click', { cta: 'inizia_subito', section: 'cta' })}
                     >
                       Inizia subito
                     </Button>
@@ -624,8 +686,9 @@ export default function LandingPage() {
                       href="/sign-in"
                       variant="outlined"
                       size="large"
+                      onClick={() => track('Landing CTA Click', { cta: 'ho_gia_account', section: 'cta' })}
                     >
-                      Ho gia un account
+                      Ho già un account
                     </Button>
                   </Stack>
                 </Stack>
@@ -655,6 +718,7 @@ export default function LandingPage() {
                       variant="body2"
                       color="text.secondary"
                       underline="hover"
+                      onClick={() => track('Landing CTA Click', { cta: 'accedi', section: 'footer' })}
                     >
                       Accedi
                     </Link>
@@ -664,6 +728,7 @@ export default function LandingPage() {
                       variant="body2"
                       color="text.secondary"
                       underline="hover"
+                      onClick={() => track('Landing CTA Click', { cta: 'registrati', section: 'footer' })}
                     >
                       Registrati
                     </Link>

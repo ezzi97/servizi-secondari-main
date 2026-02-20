@@ -9,6 +9,7 @@ import { useAppTheme } from 'src/hooks/use-theme-mode';
 import { stylesMode } from 'src/theme/styles';
 
 import { Iconify } from 'src/components/iconify/iconify';
+import { RouterLink } from 'src/routes/components/router-link';
 
 import { Main } from './main';
 import { HeaderSection } from '../core/header-section';
@@ -73,11 +74,17 @@ export function AuthLayout({ sx, children, header }: AuthLayoutProps) {
             bottomArea: (
               <Box sx={{ display: 'flex', justifyContent: 'center', pb: 0 }}>
                 <Box
-                  component="img"
-                  alt="Pronto Servizi"
-                  src="/logo/main_logo.png"
-                  sx={{ width: 200, objectFit: 'contain' }}
-                />
+                  component={RouterLink}
+                  href="/"
+                  sx={{ display: 'inline-block', cursor: 'pointer' }}
+                >
+                  <Box
+                    component="img"
+                    alt="Pronto Servizi"
+                    src="/logo/main_logo.png"
+                    sx={{ width: 200, objectFit: 'contain' }}
+                  />
+                </Box>
               </Box>
             ),
           }}

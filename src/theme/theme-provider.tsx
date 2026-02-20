@@ -4,6 +4,8 @@ import type {} from '@mui/material/themeCssVarsAugmentation';
 
 import { useMemo, useContext, useCallback, createContext } from 'react';
 
+import { track } from '@vercel/analytics';
+
 import CssBaseline from '@mui/material/CssBaseline';
 import { useColorScheme, Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';
 
@@ -32,11 +34,15 @@ function ThemeModeProvider({ children }: { children: React.ReactNode }) {
   const { mode = 'light', setMode } = useColorScheme();
 
   const toggleThemeMode = useCallback(() => {
+    const nextMode = mode === 'light' ? 'dark' : 'light';
+
     // 1. Add class so the global CSS rule kicks in with !important
     document.documentElement.classList.add('theme-transitioning');
 
     // 2. Actually switch mode
-    setMode(mode === 'light' ? 'dark' : 'light');
+    setMode(nextMode);
+
+    track('Theme Mode Changed', { mode: nextMode });
 
     // 3. Remove class after the transition finishes
     setTimeout(() => {
