@@ -8,6 +8,32 @@ const HTML_500 = (msg: string) => `<!DOCTYPE html><html lang="it"><head><meta ch
 
 const HTML_SUCCESS = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Campagna inviata</title></head><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#454F5B;max-width:600px;margin:24px auto;"><h1 style="font-size:20px;color:#1C252E;">Campagna inviata con successo</h1><p>La campagna marketing è stata inviata ai contatti in lista.</p><p><a href="https://www.prontoservizi.app/" style="color:#1877F2;">Torna a Pronto Servizi</a></p></body></html>`;
 
+/** Day of year 1..366, then 0-based index for round-robin */
+function getDayOfYearIndex(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now.getTime() - start.getTime();
+  const oneDay = 86400000;
+  return Math.floor(diff / oneDay);
+}
+
+/**
+ * When multiple lists are configured (e.g. List A, B, C for 300/day limit),
+ * pick only "today's" list so we send to one batch per day.
+ * BREVO_LIST_IDS=2,5,7 → day 0 sends to list 2, day 1 to list 5, day 2 to list 7, day 3 to list 2, ...
+ */
+function getTodayListIds(allListIds: number[]): number[] {
+  if (allListIds.length <= 1) return allListIds;
+  const index = getDayOfYearIndex() % allListIds.length;
+  return [allListIds[index]];
+}
+
+function getSuccessHtml(listIndex: number | null, totalLists: number): string {
+  if (totalLists <= 1 || listIndex === null) return HTML_SUCCESS;
+  const batchNum = listIndex + 1;
+  return `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Campagna inviata</title></head><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#454F5B;max-width:600px;margin:24px auto;"><h1 style="font-size:20px;color:#1C252E;">Campagna inviata con successo</h1><p>La campagna è stata inviata alla lista del giorno (lista ${batchNum} di ${totalLists}). Domani potrai confermare di nuovo per inviare alla lista successiva.</p><p><a href="https://www.prontoservizi.app/" style="color:#1877F2;">Torna a Pronto Servizi</a></p></body></html>`;
+}
+
 async function createAndSendCampaign(params: {
   subject: string;
   htmlContent: string;
@@ -30,6 +56,7 @@ async function createAndSendCampaign(params: {
       htmlContent: params.htmlContent,
       sender: { email: params.senderEmail, name: params.senderName },
       recipients: { listIds: params.listIds },
+      mirrorActive: false,
     }),
   });
 
@@ -76,15 +103,20 @@ module.exports = async function handler(req: any, res: any) {
   }
 
   const listIdsRaw = process.env.BREVO_LIST_IDS || '';
-  const listIds = listIdsRaw
+  const allListIds = listIdsRaw
     .split(',')
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => Number.isFinite(n) && n > 0);
 
-  if (listIds.length === 0) {
+  if (allListIds.length === 0) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(500).send(HTML_500('BREVO_LIST_IDS non configurato.'));
   }
+
+  const listIds = getTodayListIds(allListIds);
+  const listIndex = allListIds.length > 1
+    ? getDayOfYearIndex() % allListIds.length
+    : null;
 
   const senderEmail = process.env.BREVO_SENDER_EMAIL || 'noreply@prontoservizi.app';
   const senderName = process.env.BREVO_SENDER_NAME || 'Pronto Servizi';
@@ -108,5 +140,5 @@ module.exports = async function handler(req: any, res: any) {
     .eq('id', draft.id);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  return res.status(200).send(HTML_SUCCESS);
+  return res.status(200).send(getSuccessHtml(listIndex, allListIds.length));
 };
